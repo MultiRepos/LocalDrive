@@ -11,7 +11,7 @@
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Tailwind Config -->
@@ -20,10 +20,18 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554' },
                         dark: { 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.15s ease-out forwards',
+                        'zoom-in': 'zoomIn 0.1s ease-out forwards'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        zoomIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
                     }
                 }
             }
@@ -31,8 +39,10 @@
     </script>
 
     <style>
-        /* Base & Scrollbars */
-        body { -webkit-tap-highlight-color: transparent; }
+        /* UI Polish */
+        body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+        
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -42,857 +52,692 @@
         /* Grid Layout */
         .folder-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 1rem;
         }
-
-        /* Animations */
-        .animate-enter { animation: enter 0.2s ease-out forwards; }
-        @keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .animate-scale { animation: scaleIn 0.15s ease-out forwards; }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @media (min-width: 640px) { .folder-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1.5rem; } }
 
         /* Selection styling */
         .selected-item { 
-            border-color: #3b82f6 !important; 
             background-color: #eff6ff !important;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+            box-shadow: inset 0 0 0 1px #3b82f6, 0 4px 6px -1px rgba(59, 130, 246, 0.1);
         }
         .dark .selected-item {
             background-color: #1e3a8a !important;
-            border-color: #3b82f6 !important;
+            box-shadow: inset 0 0 0 1px #60a5fa;
         }
+
+        /* Context Menu positioning */
+        #contextMenu { z-index: 100; min-width: 200px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-dark-950 dark:text-slate-100 h-screen flex overflow-hidden selection:bg-primary-500 selection:text-white transition-colors duration-300">
+<body class="bg-slate-50 text-slate-800 dark:bg-dark-950 dark:text-slate-100 h-screen flex overflow-hidden selection:bg-primary-500 selection:text-white transition-colors duration-300" oncontextmenu="return false;">
 
     <!-- MOBILE SIDEBAR OVERLAY -->
     <div id="sidebarOverlay" onclick="ui.toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-72 bg-white dark:bg-dark-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform z-40 duration-300">
-        <!-- Logo -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-72 bg-white dark:bg-dark-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform z-40 duration-300 shadow-xl md:shadow-none">
+        <!-- Brand -->
         <div class="p-6 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
-                    <i class="fa-solid fa-cloud text-xl"></i>
+                <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+                    <i class="fa-solid fa-cloud text-lg"></i>
                 </div>
-                <h1 class="text-xl font-bold tracking-tight">LocalDrive</h1>
+                <h1 class="text-lg font-bold tracking-tight">LocalDrive</h1>
             </div>
-            <button onclick="ui.toggleTheme()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors">
-                <i class="fa-solid fa-moon dark:hidden"></i>
-                <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
-            </button>
         </div>
 
-        <!-- Main Actions -->
+        <!-- Create Button -->
         <div class="px-5 pb-6">
             <div class="relative group">
-                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center w-full py-3.5 px-4 bg-primary-600 text-white shadow-lg shadow-primary-500/30 rounded-xl cursor-pointer hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-500/40 transition-all active:scale-95 group">
-                    <i class="fa-solid fa-plus mr-2 group-hover:rotate-90 transition-transform"></i>
-                    <span class="font-semibold">Upload File</span>
+                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 shadow-sm rounded-xl cursor-pointer transition-all active:scale-95 group">
+                    <i class="fa-solid fa-plus mr-2 text-primary-500 group-hover:rotate-90 transition-transform"></i>
+                    <span class="font-semibold text-sm">New File</span>
                 </button>
                 <input type="file" id="fileInput" multiple class="hidden">
             </div>
-            <button onclick="modals.open('folderModal')" class="mt-3 w-full py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center transition-colors">
-                <i class="fa-regular fa-folder mr-2"></i> New Folder
-            </button>
         </div>
 
-        <!-- Navigation -->
-        <nav class="flex-1 overflow-y-auto px-4 space-y-1">
-            <a href="#/folder/root" class="flex items-center px-4 py-3 text-sm font-medium bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 rounded-xl">
-                <i class="fa-solid fa-hard-drive w-6"></i> My Drive
+        <!-- Nav -->
+        <nav class="flex-1 overflow-y-auto px-3 space-y-1">
+            <a href="#/folder/root" id="nav-root" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="fa-solid fa-hard-drive w-6 text-slate-400"></i> My Drive
             </a>
-            
-            <div class="mt-8 px-4">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Storage</h3>
-                <div class="space-y-4">
-                    <!-- Progress Bar -->
-                    <div>
-                        <div class="flex justify-between text-xs mb-1.5 font-medium">
-                            <span class="text-slate-600 dark:text-slate-400" id="storagePercent">0%</span>
-                            <span class="text-slate-400 dark:text-slate-500" id="storageUsed">0 GB</span>
-                        </div>
-                        <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                            <div id="storageBar" class="bg-primary-500 h-2 rounded-full transition-all duration-1000 w-0"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Breakdown -->
-                    <div class="space-y-2">
-                        <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
-                            <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
-                            <span class="flex-1">Images</span>
-                            <span id="statImages">0 MB</span>
-                        </div>
-                        <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
-                            <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-                            <span class="flex-1">Videos</span>
-                            <span id="statVideos">0 MB</span>
-                        </div>
-                        <div class="flex items-center text-xs text-slate-500 dark:text-slate-400">
-                            <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-                            <span class="flex-1">Docs</span>
-                            <span id="statDocs">0 MB</span>
-                        </div>
-                    </div>
+            <a href="#/starred" id="nav-starred" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="fa-solid fa-star w-6 text-slate-400"></i> Starred
+            </a>
+            <div class="pt-4 pb-2 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Storage</div>
+            <div class="px-4">
+                <div class="flex justify-between text-xs mb-1.5 font-medium">
+                    <span class="text-slate-600 dark:text-slate-400" id="storagePercent">0%</span>
+                    <span class="text-slate-400 dark:text-slate-500" id="storageUsed">0 GB</span>
+                </div>
+                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div id="storageBar" class="bg-primary-500 h-1.5 rounded-full transition-all duration-1000 w-0"></div>
                 </div>
             </div>
         </nav>
         
-        <div class="p-4 border-t border-slate-200 dark:border-slate-800 text-center">
-             <button onclick="actions.clearAllData()" class="text-xs text-red-400 hover:text-red-500 hover:underline">Clear All Data</button>
+        <!-- Bottom Controls -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <button onclick="ui.toggleTheme()" class="w-9 h-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors" title="Toggle Theme">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
+            </button>
+            <span class="text-[10px] text-slate-400">v2.1 Local</span>
         </div>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50 dark:bg-dark-950 transition-colors">
+    <main class="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50/50 dark:bg-dark-950 transition-colors" onclick="ctx.close()" oncontextmenu="ctx.bg(event)">
         
-        <!-- Top Bar -->
-        <header class="h-16 bg-white/80 dark:bg-dark-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 shrink-0 z-10 sticky top-0 transition-colors">
-            
+        <!-- Header -->
+        <header class="h-16 bg-white/80 dark:bg-dark-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 shrink-0 z-10 sticky top-0">
             <div class="flex items-center gap-3 overflow-hidden flex-1 mr-4">
                 <button class="md:hidden text-slate-500 p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" onclick="ui.toggleSidebar()">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
-                
-                <!-- Breadcrumbs -->
                 <div id="breadcrumbs" class="flex items-center text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap overflow-x-auto no-scrollbar mask-linear-fade px-1">
-                    <!-- Injected by JS -->
+                    <!-- JS Injected -->
                 </div>
             </div>
 
-            <!-- Controls -->
+            <!-- Header Actions -->
             <div class="flex items-center gap-2 lg:gap-3 shrink-0">
                 <div class="relative hidden sm:block">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="Search" class="bg-slate-100 dark:bg-slate-800 border-transparent hover:border-slate-300 dark:hover:border-slate-600 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary-500 outline-none w-48 transition-all dark:text-white placeholder-slate-500">
+                    <input type="text" id="searchInput" placeholder="Search" class="bg-slate-100 dark:bg-slate-800 border-transparent hover:border-slate-300 dark:hover:border-slate-600 rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary-500 outline-none w-48 transition-all dark:text-white placeholder-slate-500">
                 </div>
-                
-                <div class="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block"></div>
-
                 <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <button onclick="app.toggleView('grid')" id="btnGrid" class="p-1.5 rounded shadow-sm bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 transition-all"><i class="fa-solid fa-border-all text-sm"></i></button>
-                    <button onclick="app.toggleView('list')" id="btnList" class="p-1.5 rounded text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"><i class="fa-solid fa-list text-sm"></i></button>
+                    <button onclick="app.toggleView('grid')" id="btnGrid" class="p-1.5 rounded-md shadow-sm bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 transition-all"><i class="fa-solid fa-border-all text-xs"></i></button>
+                    <button onclick="app.toggleView('list')" id="btnList" class="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"><i class="fa-solid fa-list text-xs"></i></button>
                 </div>
             </div>
         </header>
 
         <!-- Drop Zone -->
-        <div id="dropZone" class="hidden absolute inset-0 bg-primary-50/90 dark:bg-primary-900/90 z-50 flex flex-col items-center justify-center border-4 border-primary-400 border-dashed m-4 rounded-3xl backdrop-blur-sm transition-all animate-enter">
+        <div id="dropZone" class="hidden absolute inset-0 bg-primary-50/90 dark:bg-primary-900/90 z-50 flex flex-col items-center justify-center border-4 border-primary-400 border-dashed m-4 rounded-3xl backdrop-blur-sm transition-all animate-fade-in">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-full shadow-xl mb-6 animate-bounce">
                 <i class="fa-solid fa-cloud-arrow-up text-5xl text-primary-500"></i>
             </div>
             <h2 class="text-3xl font-bold text-primary-800 dark:text-white">Drop files here</h2>
         </div>
 
-        <!-- File List Area -->
-        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative scroll-smooth" onclick="selection.clear()">
-            <!-- Content injected here -->
-        </div>
-
-        <!-- Floating Action Bar (Selection) -->
-        <div id="selectionBar" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 z-30 transition-all translate-y-24 opacity-0 max-w-sm w-full justify-between">
-            <span id="selectionCount" class="font-medium text-sm text-slate-300">0 selected</span>
-            <div class="flex items-center gap-4">
-                 <button onclick="modals.openMove()" class="hover:text-primary-400 flex flex-col items-center gap-1 text-[10px] transition-colors">
-                    <i class="fa-solid fa-folder-tree text-lg"></i> Move
-                </button>
-                <div class="w-px h-8 bg-slate-700"></div>
-                <button onclick="selection.delete()" class="hover:text-red-400 flex flex-col items-center gap-1 text-[10px] transition-colors">
-                    <i class="fa-solid fa-trash text-lg"></i> Delete
-                </button>
-            </div>
+        <!-- Files -->
+        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative scroll-smooth outline-none" tabindex="0">
+            <!-- JS Injected -->
         </div>
 
     </main>
 
-    <!-- === MODALS === -->
+    <!-- CONTEXT MENU -->
+    <div id="contextMenu" class="fixed hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 py-1.5 overflow-hidden animate-zoom-in text-sm font-medium text-slate-700 dark:text-slate-200" onclick="ctx.close()">
+        <!-- JS Injected -->
+    </div>
+
+    <!-- MODALS -->
     
     <!-- New Folder -->
-    <div id="folderModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity animate-enter">
+    <div id="folderModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity animate-fade-in">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800">
             <h3 class="text-lg font-bold mb-4 dark:text-white">New Folder</h3>
             <input type="text" id="folderNameInput" placeholder="Folder Name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white" onkeydown="if(event.key === 'Enter') modals.submitFolder()">
             <div class="flex justify-end gap-3">
-                <button onclick="modals.close('folderModal')" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors">Cancel</button>
-                <button onclick="modals.submitFolder()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg shadow-primary-500/20">Create</button>
+                <button onclick="modals.close('folderModal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
+                <button onclick="modals.submitFolder()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-lg shadow-primary-500/20">Create</button>
             </div>
         </div>
     </div>
 
     <!-- Rename -->
-    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-enter">
+    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800">
             <h3 class="text-lg font-bold mb-4 dark:text-white">Rename</h3>
             <input type="text" id="renameInput" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white" onkeydown="if(event.key === 'Enter') modals.submitRename()">
             <div class="flex justify-end gap-3">
-                <button onclick="modals.close('renameModal')" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-medium">Cancel</button>
-                <button onclick="modals.submitRename()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg">Save</button>
+                <button onclick="modals.close('renameModal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                <button onclick="modals.submitRename()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-lg">Save</button>
             </div>
         </div>
     </div>
 
-    <!-- Move To Modal -->
-    <div id="moveModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-enter">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-100 dark:border-slate-800 flex flex-col max-h-[80vh]">
-            <h3 class="text-lg font-bold mb-4 dark:text-white">Move to...</h3>
-            <div id="moveTree" class="flex-1 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl p-2 mb-4 bg-slate-50 dark:bg-slate-800 min-h-[200px]">
-                <!-- Injected Tree -->
+    <!-- Properties Modal -->
+    <div id="propsModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xs p-6 border border-slate-100 dark:border-slate-800">
+            <h3 class="text-lg font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-primary-500"></i> Properties</h3>
+            <div id="propsContent" class="space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                <!-- Injected -->
             </div>
-            <div class="flex justify-between items-center pt-2">
-                <span id="moveSelectedLabel" class="text-xs text-slate-500"></span>
-                <div class="flex gap-3">
-                     <button onclick="modals.close('moveModal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-sm font-medium">Cancel</button>
-                     <button onclick="actions.confirmMove()" id="btnConfirmMove" class="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 shadow-lg" disabled>Move Here</button>
-                </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="modals.close('propsModal')" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- Preview/Editor Modal -->
-    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/95 z-50 flex flex-col backdrop-blur-md animate-enter">
-        <!-- Preview Header -->
-        <div class="flex justify-between items-center px-4 py-3 md:px-6 md:py-4 bg-black/20 shrink-0 border-b border-white/10">
-            <div class="flex items-center gap-4 overflow-hidden">
-                <button onclick="router.closePreview()" class="md:hidden text-white/70 hover:text-white"><i class="fa-solid fa-arrow-left"></i></button>
-                <div class="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center shrink-0" id="previewIcon"></div>
+    <!-- Preview Modal -->
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col backdrop-blur-xl animate-fade-in">
+        <div class="flex justify-between items-center px-4 py-3 bg-white/5 border-b border-white/10 text-white">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 bg-slate-800 rounded flex items-center justify-center" id="previewIcon"></div>
                 <div class="min-w-0">
-                    <h3 id="previewTitle" class="font-bold text-lg text-white truncate">Filename.jpg</h3>
-                    <p id="previewMeta" class="text-xs text-slate-400">2.4 MB • Today</p>
+                    <h3 id="previewTitle" class="font-bold truncate">Filename.jpg</h3>
+                    <p id="previewMeta" class="text-xs text-slate-400 opacity-70">2.4 MB</p>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button id="saveTextBtn" onclick="actions.saveTextFile()" class="hidden px-4 py-2 bg-primary-600 text-white text-sm font-bold rounded-lg hover:bg-primary-500 shadow-lg shadow-primary-500/20 mr-2">Save Changes</button>
-                <button id="downloadBtn" class="p-2.5 hover:bg-white/10 rounded-full transition-colors text-white" title="Download"><i class="fa-solid fa-download"></i></button>
-                <button onclick="router.closePreview()" class="p-2.5 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors text-white" title="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button id="saveTextBtn" onclick="actions.saveTextFile()" class="hidden px-3 py-1.5 bg-primary-600 text-xs font-bold rounded hover:bg-primary-500 mr-2">Save</button>
+                <button id="downloadBtn" class="p-2 hover:bg-white/10 rounded-full transition-colors"><i class="fa-solid fa-download"></i></button>
+                <button onclick="router.closePreview()" class="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
         </div>
-        
-        <!-- Preview Content -->
-        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-auto relative">
-             <!-- Content -->
-        </div>
+        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 overflow-auto"></div>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Toast -->
     <div id="toastContainer" class="fixed bottom-6 right-6 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- LOGIC -->
+    <!-- JAVASCRIPT -->
     <script>
-        // --- CONSTANTS & STATE ---
-        const DB_NAME = 'LocalDriveDB_V2';
+        // CONFIG
+        const DB_NAME = 'LocalDrive_V3';
         const DB_VER = 1;
         const STORE = 'files';
-        
+
+        // STATE
         const state = {
             db: null,
             currentFolderId: 'root',
             currentFolderData: null,
             viewMode: localStorage.getItem('viewMode') || 'grid',
-            sortBy: 'name', 
-            sortDesc: false,
+            sortBy: 'name', sortDesc: false,
             files: [],
             pathCache: [],
             selection: new Set(),
-            contextItem: null, // For right click
-            moveTargetId: null, // For move modal
-            editingFile: null // For text editor
+            clipboard: null, // { op: 'cut'|'copy', items: [] }
+            isStarredView: false,
+            darkMode: localStorage.getItem('theme') === 'dark'
         };
 
-        // --- DATABASE LAYER ---
+        // DATABASE WRAPPER
         const db = {
-            init: () => new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, DB_VER);
-                req.onupgradeneeded = e => {
+            init: () => new Promise((res, rej) => {
+                const r = indexedDB.open(DB_NAME, DB_VER);
+                r.onupgradeneeded = e => {
                     const d = e.target.result;
-                    if (!d.objectStoreNames.contains(STORE)) {
-                        const s = d.createObjectStore(STORE, { keyPath: 'id' });
-                        s.createIndex('parentId', 'parentId', { unique: false });
+                    if(!d.objectStoreNames.contains(STORE)) {
+                        const s = d.createObjectStore(STORE, {keyPath:'id'});
+                        s.createIndex('parentId', 'parentId', {unique:false});
                     }
                 };
-                req.onsuccess = e => { state.db = e.target.result; resolve(); };
-                req.onerror = e => reject(e);
+                r.onsuccess = e => { state.db = e.target.result; res(); };
+                r.onerror = e => rej(e);
             }),
-            op: (mode, fn) => new Promise((resolve, reject) => {
-                const tx = state.db.transaction([STORE], mode);
-                const store = tx.objectStore(STORE);
-                const req = fn(store);
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error);
+            tx: (mode, fn) => new Promise((res, rej) => {
+                const t = state.db.transaction([STORE], mode);
+                const s = t.objectStore(STORE);
+                const r = fn(s);
+                r.onsuccess = () => res(r.result);
+                r.onerror = () => rej(r.error);
             }),
-            add: item => db.op('readwrite', s => s.add(item)),
-            put: item => db.op('readwrite', s => s.put(item)),
-            del: id => db.op('readwrite', s => s.delete(id)),
-            get: id => db.op('readonly', s => s.get(id)),
-            getAll: () => db.op('readonly', s => s.getAll()),
-            getByParent: pid => new Promise(resolve => {
-                const tx = state.db.transaction([STORE], 'readonly');
-                const idx = tx.objectStore(STORE).index('parentId');
-                const req = idx.getAll(pid);
-                req.onsuccess = () => resolve(req.result);
-            }),
-            buildPath: async (id) => {
-                const path = [];
-                let currId = id;
-                let safety = 0; 
-                while(currId !== 'root' && safety < 20) {
-                    const f = await db.get(currId);
-                    if(!f) break;
-                    path.unshift(f);
-                    currId = f.parentId;
-                    safety++;
-                }
-                path.unshift({ id: 'root', name: 'My Drive' });
-                return path;
-            },
-            deleteRecursive: async (id) => {
-                const item = await db.get(id);
-                if (!item) return;
-                if (item.isFolder) {
-                    const children = await db.getByParent(id);
-                    for (let c of children) await db.deleteRecursive(c.id);
-                }
-                await db.del(id);
-            }
+            add: i => db.tx('readwrite', s => s.add(i)),
+            put: i => db.tx('readwrite', s => s.put(i)),
+            del: id => db.tx('readwrite', s => s.delete(id)),
+            get: id => db.tx('readonly', s => s.get(id)),
+            getAll: () => db.tx('readonly', s => s.getAll()),
+            getByParent: pid => new Promise(res => {
+                const t = state.db.transaction([STORE], 'readonly');
+                const idx = t.objectStore(STORE).index('parentId');
+                const r = idx.getAll(pid);
+                r.onsuccess = () => res(r.result);
+            })
         };
 
-        // --- ROUTER ---
-        const router = {
-            init: () => {
-                window.addEventListener('hashchange', router.handle);
-                router.handle(); 
+        // HELPER UTILS
+        const utils = {
+            fmtBytes: b => {
+                if(!b) return '0 B';
+                const s = ['B','KB','MB','GB'];
+                const i = Math.floor(Math.log(b)/Math.log(1024));
+                return `${(b/Math.pow(1024,i)).toFixed(1)} ${s[i]}`;
             },
-            handle: async () => {
-                const hash = window.location.hash;
-                if (!hash || hash === '#/') { window.location.hash = '#/folder/root'; return; }
+            getIcon: f => {
+                if(f.isFolder) return 'fa-solid fa-folder text-yellow-400';
+                if(f.type.startsWith('image')) return 'fa-solid fa-image text-purple-500';
+                if(f.type.startsWith('video')) return 'fa-solid fa-film text-red-500';
+                if(f.type.includes('pdf')) return 'fa-solid fa-file-pdf text-red-600';
+                if(f.name.match(/\.(txt|md|js|html|css|json)$/)) return 'fa-solid fa-file-code text-slate-500';
+                return 'fa-solid fa-file text-slate-400';
+            },
+            isText: f => f.type.startsWith('text') || f.name.match(/\.(txt|md|js|html|css|json|py|log)$/)
+        };
 
-                if (hash.startsWith('#/folder/')) {
+        // ROUTER
+        const router = {
+            init: () => { window.addEventListener('hashchange', router.handle); router.handle(); },
+            handle: async () => {
+                const hash = window.location.hash || '#/folder/root';
+                
+                // Highlight Nav
+                document.querySelectorAll('aside nav a').forEach(a => {
+                    a.classList.remove('bg-primary-50', 'dark:bg-primary-900/20', 'text-primary-600', 'dark:text-primary-400');
+                    if(a.getAttribute('href') === hash) a.classList.add('bg-primary-50', 'dark:bg-primary-900/20', 'text-primary-600', 'dark:text-primary-400');
+                });
+
+                if(hash === '#/starred') {
+                    await app.loadStarred();
+                } else if (hash.startsWith('#/folder/')) {
                     const id = hash.replace('#/folder/', '');
                     await app.loadFolder(id);
-                    document.getElementById('previewModal').classList.add('hidden');
-                } else if (hash.startsWith('#/file/')) {
-                    const id = hash.replace('#/file/', '');
-                    const file = await db.get(id);
-                    if (file) {
-                         if (state.currentFolderId !== file.parentId) await app.loadFolder(file.parentId);
-                         app.openPreview(file);
-                    } else {
-                         ui.toast('File not found', 'error');
-                         window.location.hash = `#/folder/${state.currentFolderId}`;
-                    }
                 }
+                
+                document.getElementById('previewModal').classList.add('hidden');
             },
-            navigate: (id) => window.location.hash = `#/folder/${id}`,
-            openFile: (id) => window.location.hash = `#/file/${id}`,
-            closePreview: () => window.location.hash = `#/folder/${state.currentFolderId}`
+            navigate: id => window.location.hash = `#/folder/${id}`,
+            closePreview: () => document.getElementById('previewModal').classList.add('hidden')
         };
 
-        // --- CORE APP ---
+        // APP CORE
         const app = {
             loadFolder: async (id) => {
+                state.isStarredView = false;
                 state.currentFolderId = id;
-                selection.clear();
+                state.selection.clear();
                 
-                // Get Folder Info
-                if (id === 'root') {
+                if(id === 'root') {
                     state.currentFolderData = { id: 'root', name: 'My Drive' };
-                    state.pathCache = [{ id: 'root', name: 'My Drive' }];
+                    state.pathCache = [{id:'root', name:'My Drive'}];
                 } else {
                     const f = await db.get(id);
-                    if (!f) return router.navigate('root');
+                    if(!f) return router.navigate('root');
                     state.currentFolderData = f;
-                    state.pathCache = await db.buildPath(id);
+                    // Build path
+                    let p = [], curr = id;
+                    while(curr !== 'root' && p.length < 10) {
+                        const x = await db.get(curr);
+                        if(!x) break;
+                        p.unshift(x);
+                        curr = x.parentId;
+                    }
+                    p.unshift({id:'root', name:'My Drive'});
+                    state.pathCache = p;
                 }
                 
-                document.title = `${state.currentFolderData.name} - LocalDrive`;
-
-                // Get Content
                 state.files = await db.getByParent(id);
-                
-                app.sortAndRender();
-                ui.renderBreadcrumbs();
-                app.calcStats();
+                app.render();
             },
 
-            sortAndRender: () => {
-                const { sortBy, sortDesc } = state;
-                const mul = sortDesc ? -1 : 1;
-
-                state.files.sort((a, b) => {
-                    if (a.isFolder !== b.isFolder) return (a.isFolder ? -1 : 1);
-                    if (sortBy === 'size') return (a.size - b.size) * mul;
-                    if (sortBy === 'date') return (a.createdAt - b.createdAt) * mul;
-                    return a.name.localeCompare(b.name) * mul;
-                });
+            loadStarred: async () => {
+                state.isStarredView = true;
+                state.currentFolderId = null;
+                state.currentFolderData = { name: 'Starred' };
+                state.pathCache = [{id:'root', name:'My Drive'}, {id:'starred', name:'Starred'}];
+                state.selection.clear();
                 
-                ui.renderFiles();
-            },
-
-            toggleSort: (key) => {
-                if (state.sortBy === key) state.sortDesc = !state.sortDesc;
-                else { state.sortBy = key; state.sortDesc = false; }
-                app.sortAndRender();
-            },
-
-            toggleView: (mode) => {
-                state.viewMode = mode;
-                localStorage.setItem('viewMode', mode);
-                document.getElementById('btnGrid').className = `p-1.5 rounded transition-all ${mode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400'}`;
-                document.getElementById('btnList').className = `p-1.5 rounded transition-all ${mode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400'}`;
-                ui.renderFiles();
-            },
-
-            openPreview: (file) => {
-                const modal = document.getElementById('previewModal');
-                const content = document.getElementById('previewContent');
-                const saveBtn = document.getElementById('saveTextBtn');
-                
-                state.editingFile = null;
-                saveBtn.classList.add('hidden');
-                
-                document.getElementById('previewTitle').innerText = file.name;
-                document.getElementById('previewMeta').innerText = `${utils.fmtBytes(file.size)} • ${new Date(file.createdAt).toLocaleString()}`;
-                document.getElementById('previewIcon').innerHTML = `<i class="${utils.getIcon(file)} text-xl text-slate-400"></i>`;
-                
-                const url = URL.createObjectURL(file.data);
-                document.getElementById('downloadBtn').onclick = () => { const a = document.createElement('a'); a.href = url; a.download = file.name; a.click(); };
-
-                modal.classList.remove('hidden');
-                content.innerHTML = '<div class="w-10 h-10 border-4 border-white/20 border-t-primary-500 rounded-full animate-spin"></div>';
-
-                setTimeout(() => {
-                    if (file.type.startsWith('image/')) {
-                        content.innerHTML = `<img src="${url}" class="max-w-full max-h-[85vh] rounded shadow-2xl object-contain">`;
-                    } else if (file.type.startsWith('video/')) {
-                         content.innerHTML = `<video src="${url}" controls class="max-w-full max-h-[85vh] rounded shadow-2xl"></video>`;
-                    } else if (utils.isText(file)) {
-                        // TEXT EDITOR
-                        state.editingFile = file;
-                        saveBtn.classList.remove('hidden');
-                        const r = new FileReader();
-                        r.onload = e => {
-                            content.innerHTML = `<textarea id="textEditor" class="w-full h-full max-w-4xl h-[80vh] bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-6 rounded-lg shadow-2xl font-mono text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary-500">${e.target.result}</textarea>`;
-                        };
-                        r.readAsText(file.data);
-                    } else {
-                        content.innerHTML = `<div class="text-center text-white/50"><i class="fa-solid fa-file-circle-question text-6xl mb-4"></i><p>Preview not available</p></div>`;
-                    }
-                }, 50);
-            },
-
-            calcStats: async () => {
                 const all = await db.getAll();
-                let stats = { img: 0, vid: 0, doc: 0, total: 0 };
-                all.forEach(f => {
-                    if(!f.isFolder) {
-                        stats.total += f.size;
-                        if(f.type.startsWith('image')) stats.img += f.size;
-                        else if(f.type.startsWith('video')) stats.vid += f.size;
-                        else stats.doc += f.size;
-                    }
-                });
-                
-                // Max 1GB visual cap
-                const max = 1024 * 1024 * 1024; 
-                const pct = Math.min((stats.total / max) * 100, 100).toFixed(1);
-                
-                document.getElementById('storageBar').style.width = `${pct}%`;
-                document.getElementById('storagePercent').innerText = `${pct}%`;
-                document.getElementById('storageUsed').innerText = utils.fmtBytes(stats.total);
-                
-                document.getElementById('statImages').innerText = utils.fmtBytes(stats.img);
-                document.getElementById('statVideos').innerText = utils.fmtBytes(stats.vid);
-                document.getElementById('statDocs').innerText = utils.fmtBytes(stats.doc);
-            }
-        };
-
-        // --- SELECTION LOGIC ---
-        const selection = {
-            toggle: (e, id) => {
-                e.stopPropagation(); // prevent opening file
-                if (e.ctrlKey || e.metaKey) {
-                    if (state.selection.has(id)) state.selection.delete(id);
-                    else state.selection.add(id);
-                } else {
-                    // Normal click clears selection unless selecting
-                    // But in grid, clicking icon usually opens. 
-                    // Let's say Clicking the card background selects?
-                    // Implemented in UI render
-                }
-                selection.updateUI();
-            },
-            
-            // Explicitly select one (for right click)
-            selectOne: (id) => {
-                state.selection.clear();
-                state.selection.add(id);
-                selection.updateUI();
+                state.files = all.filter(f => f.starred);
+                app.render();
             },
 
-            clear: () => {
-                state.selection.clear();
-                selection.updateUI();
-            },
-
-            updateUI: () => {
-                // Visuals
-                document.querySelectorAll('.file-item').forEach(el => {
-                    const id = el.dataset.id;
-                    if (state.selection.has(id)) el.classList.add('selected-item');
-                    else el.classList.remove('selected-item');
-                });
-
-                // Bar
-                const bar = document.getElementById('selectionBar');
-                if (state.selection.size > 0) {
-                    bar.classList.remove('translate-y-24', 'opacity-0');
-                    document.getElementById('selectionCount').innerText = `${state.selection.size} selected`;
-                } else {
-                    bar.classList.add('translate-y-24', 'opacity-0');
-                }
-            },
-
-            delete: async () => {
-                if(!confirm(`Delete ${state.selection.size} items?`)) return;
-                for(let id of state.selection) await db.deleteRecursive(id);
-                state.selection.clear();
-                selection.updateUI();
-                app.loadFolder(state.currentFolderId);
-                ui.toast('Items deleted', 'success');
-            }
-        };
-
-        // --- ACTIONS ---
-        const actions = {
-            upload: async (files) => {
-                if(!files.length) return;
-                ui.toast(`Uploading ${files.length} files...`, 'loading');
-                let count = 0;
-                for (let file of files) {
-                    await db.add({
-                        id: crypto.randomUUID(),
-                        parentId: state.currentFolderId,
-                        name: file.name,
-                        isFolder: false,
-                        type: file.type,
-                        size: file.size,
-                        createdAt: Date.now(),
-                        data: file
-                    });
-                    count++;
-                }
-                ui.toast(`Uploaded ${count} files`, 'success');
-                app.loadFolder(state.currentFolderId);
-            },
-            
-            saveTextFile: async () => {
-                if (!state.editingFile) return;
-                const newText = document.getElementById('textEditor').value;
-                const blob = new Blob([newText], { type: state.editingFile.type });
-                
-                state.editingFile.data = blob;
-                state.editingFile.size = blob.size;
-                await db.put(state.editingFile);
-                
-                ui.toast('File saved successfully', 'success');
-                app.loadFolder(state.currentFolderId); // Refresh stats
-            },
-            
-            clearAllData: async () => {
-                if(confirm("WARNING: This will delete ALL files in LocalDrive. Are you sure?")) {
-                    // Delete Database
-                    indexedDB.deleteDatabase(DB_NAME);
-                    window.location.reload();
-                }
-            },
-
-            confirmMove: async () => {
-                if (!state.moveTargetId || state.selection.size === 0) return;
-                
-                for(let id of state.selection) {
-                    const item = await db.get(id);
-                    // Prevent moving folder into itself
-                    if (item.id === state.moveTargetId) continue; 
-                    item.parentId = state.moveTargetId;
-                    await db.put(item);
-                }
-                
-                modals.close('moveModal');
-                selection.clear();
-                app.loadFolder(state.currentFolderId);
-                ui.toast('Items moved', 'success');
-            }
-        };
-
-        // --- UI RENDERER ---
-        const ui = {
-            toggleTheme: () => {
-                document.documentElement.classList.toggle('dark');
-            },
-            toggleSidebar: () => {
-                const s = document.getElementById('sidebar');
-                const o = document.getElementById('sidebarOverlay');
-                const isOpen = !s.classList.contains('-translate-x-full');
-                
-                if(isOpen) {
-                    s.classList.add('-translate-x-full');
-                    o.classList.add('hidden');
-                } else {
-                    s.classList.remove('-translate-x-full');
-                    o.classList.remove('hidden');
-                }
-            },
-            renderBreadcrumbs: () => {
-                const el = document.getElementById('breadcrumbs');
-                el.innerHTML = state.pathCache.map((f, i) => {
+            render: () => {
+                // Breadcrumbs
+                const bc = document.getElementById('breadcrumbs');
+                bc.innerHTML = state.pathCache.map((f, i) => {
                     const last = i === state.pathCache.length - 1;
                     return `
-                        ${i > 0 ? '<i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-400"></i>' : ''}
-                        <button onclick="router.navigate('${f.id}')" class="${last ? 'font-bold text-slate-800 dark:text-white pointer-events-none' : 'text-slate-500 hover:text-primary-500'} transition-colors">
-                            ${f.name}
-                        </button>`;
+                    ${i>0 ? '<i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-300"></i>' : ''}
+                    <button onclick="${f.id==='starred'?'window.location.hash=\'#/starred\'':'router.navigate(\''+f.id+'\')'}" 
+                            class="${last ? 'font-bold text-slate-800 dark:text-white pointer-events-none' : 'text-slate-500 hover:text-primary-500'} transition-colors">
+                        ${f.name}
+                    </button>`;
                 }).join('');
-                el.scrollLeft = el.scrollWidth;
-            },
-            
-            renderFiles: () => {
+                
+                // Files
                 const area = document.getElementById('fileArea');
                 const q = document.getElementById('searchInput').value.toLowerCase();
-                const items = state.files.filter(f => f.name.toLowerCase().includes(q));
+                let list = state.files.filter(f => f.name.toLowerCase().includes(q));
                 
-                if(items.length === 0) {
-                    area.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 dark:text-slate-600 pb-20 animate-enter"><i class="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i><p>This folder is empty</p></div>`;
+                // Sort
+                const mul = state.sortDesc ? -1 : 1;
+                list.sort((a,b) => {
+                    if(a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+                    if(state.sortBy === 'size') return (a.size - b.size) * mul;
+                    return a.name.localeCompare(b.name) * mul;
+                });
+
+                if(!list.length) {
+                    area.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 dark:text-slate-600 animate-fade-in"><i class="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i><p>${state.isStarredView?'No starred files':'Empty folder'}</p></div>`;
+                    app.calcStorage(); // Update stats even if empty
                     return;
                 }
 
-                if (state.viewMode === 'grid') {
-                    area.innerHTML = `<div class="folder-grid pb-32 animate-enter">
-                        ${items.map(f => {
-                            return `
-                            <div data-id="${f.id}"
-                                 class="file-item group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 hover:shadow-lg rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer transition-all aspect-square justify-between select-none"
-                                 onclick="if(!event.ctrlKey) { utils.itemClick('${f.id}', ${f.isFolder}) } else { selection.toggle(event, '${f.id}') }"
-                                 oncontextmenu="utils.ctx(event, '${f.id}')">
-                                <div class="absolute top-2 left-2 z-10" onclick="selection.toggle(event, '${f.id}')">
-                                    <div class="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-500 group-hover:border-primary-500 bg-white dark:bg-slate-700 ${state.selection.has(f.id)?'bg-primary-500 border-primary-500':''}"></div>
-                                </div>
+                if(state.viewMode === 'grid') {
+                    area.innerHTML = `<div class="folder-grid pb-20 animate-fade-in">
+                        ${list.map(f => `
+                            <div class="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 hover:shadow-md rounded-2xl p-4 flex flex-col items-center justify-between aspect-square cursor-pointer transition-all select-none ${state.selection.has(f.id)?'selected-item ring-1 ring-primary-500':''}"
+                                 onclick="actions.select(event, '${f.id}')"
+                                 oncontextmenu="ctx.open(event, '${f.id}')"
+                                 ondblclick="actions.open('${f.id}')">
+                                ${f.starred ? '<div class="absolute top-2 right-2 text-yellow-400 text-xs"><i class="fa-solid fa-star"></i></div>' : ''}
                                 <div class="w-full flex-1 flex items-center justify-center overflow-hidden mb-2 pointer-events-none">
-                                    ${utils.thumb(f)}
+                                    ${f.type.startsWith('image') ? 
+                                        `<img src="${URL.createObjectURL(f.data)}" class="w-full h-full object-cover rounded-lg shadow-sm">` : 
+                                        `<i class="${utils.getIcon(f)} text-5xl opacity-90"></i>`}
                                 </div>
-                                <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate w-full px-1">${f.name}</p>
-                            </div>`;
-                        }).join('')}
+                                <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate w-full text-center">${f.name}</p>
+                            </div>
+                        `).join('')}
                     </div>`;
                 } else {
-                    // List View
-                    const arrow = state.sortDesc ? 'fa-arrow-down' : 'fa-arrow-up';
                     area.innerHTML = `
-                        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm mb-32 animate-enter">
+                        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm mb-20 animate-fade-in">
                             <table class="w-full text-left text-sm dark:text-slate-300">
-                                <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500">
+                                <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 text-xs uppercase text-slate-500">
                                     <tr>
-                                        <th class="px-6 py-3 font-medium cursor-pointer hover:text-primary-500" onclick="app.toggleSort('name')">Name ${state.sortBy==='name'?`<i class="fa-solid ${arrow} ml-1"></i>`:''}</th>
-                                        <th class="px-6 py-3 font-medium hidden sm:table-cell cursor-pointer hover:text-primary-500" onclick="app.toggleSort('date')">Date ${state.sortBy==='date'?`<i class="fa-solid ${arrow} ml-1"></i>`:''}</th>
-                                        <th class="px-6 py-3 font-medium hidden md:table-cell cursor-pointer hover:text-primary-500" onclick="app.toggleSort('size')">Size ${state.sortBy==='size'?`<i class="fa-solid ${arrow} ml-1"></i>`:''}</th>
+                                        <th class="px-6 py-3 cursor-pointer" onclick="actions.sort('name')">Name</th>
+                                        <th class="px-6 py-3 hidden sm:table-cell">Date</th>
+                                        <th class="px-6 py-3 hidden md:table-cell">Size</th>
+                                        <th class="px-6 py-3 w-10"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                                    ${items.map(f => `
-                                        <tr data-id="${f.id}" 
-                                            class="file-item hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
-                                            onclick="if(!event.ctrlKey) { utils.itemClick('${f.id}', ${f.isFolder}) } else { selection.toggle(event, '${f.id}') }"
-                                            oncontextmenu="utils.ctx(event, '${f.id}')">
+                                    ${list.map(f => `
+                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${state.selection.has(f.id)?'bg-primary-50 dark:bg-slate-700':''}"
+                                            onclick="actions.select(event, '${f.id}')"
+                                            oncontextmenu="ctx.open(event, '${f.id}')"
+                                            ondblclick="actions.open('${f.id}')">
                                             <td class="px-6 py-3 flex items-center gap-3">
-                                                <div class="w-5 h-5 rounded border border-slate-300 dark:border-slate-500 ${state.selection.has(f.id)?'bg-primary-500 border-primary-500':''}" onclick="selection.toggle(event, '${f.id}')"></div>
-                                                <i class="${utils.getIcon(f)} text-lg w-6 text-center"></i>
-                                                <span class="font-medium truncate max-w-[200px]">${f.name}</span>
+                                                <i class="${utils.getIcon(f)} w-5 text-center text-lg"></i>
+                                                <span class="truncate max-w-[200px] font-medium ${f.starred?'text-yellow-600 dark:text-yellow-400':''}">${f.name}</span>
                                             </td>
-                                            <td class="px-6 py-3 text-slate-500 hidden sm:table-cell text-xs">${new Date(f.createdAt).toLocaleDateString()}</td>
-                                            <td class="px-6 py-3 text-slate-500 hidden md:table-cell text-xs font-mono">${f.isFolder ? '--' : utils.fmtBytes(f.size)}</td>
+                                            <td class="px-6 py-3 text-slate-500 text-xs hidden sm:table-cell">${new Date(f.createdAt).toLocaleDateString()}</td>
+                                            <td class="px-6 py-3 text-slate-500 text-xs font-mono hidden md:table-cell">${f.isFolder?'--':utils.fmtBytes(f.size)}</td>
+                                            <td class="px-6 py-3 text-right">
+                                                ${f.starred ? '<i class="fa-solid fa-star text-yellow-400 text-xs"></i>' : ''}
+                                            </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
                         </div>`;
                 }
+                app.calcStorage();
+            },
+
+            calcStorage: async () => {
+                const all = await db.getAll();
+                const total = all.reduce((a,b) => a + (b.size||0), 0);
+                const limit = 1024 * 1024 * 1024; // 1GB Visual Limit
+                const pct = Math.min((total/limit)*100, 100).toFixed(1);
+                
+                document.getElementById('storageBar').style.width = `${pct}%`;
+                document.getElementById('storagePercent').innerText = `${pct}%`;
+                document.getElementById('storageUsed').innerText = utils.fmtBytes(total);
             },
             
-            toast: (msg, type='info') => {
-                const c = document.getElementById('toastContainer');
-                const div = document.createElement('div');
-                const colors = type==='error'?'bg-red-500':type==='success'?'bg-emerald-500':'bg-slate-800 dark:bg-slate-700';
-                div.className = `${colors} text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium animate-enter backdrop-blur-md`;
-                div.innerHTML = `<i class="fa-solid ${type==='error'?'fa-circle-exclamation':'fa-check-circle'}"></i> ${msg}`;
-                c.appendChild(div);
-                setTimeout(() => div.remove(), 3000);
+            toggleView: m => {
+                state.viewMode = m;
+                localStorage.setItem('viewMode', m);
+                app.render();
             }
+        };
+
+        // USER ACTIONS
+        const actions = {
+            select: (e, id) => {
+                if(e.ctrlKey || e.metaKey) {
+                    state.selection.has(id) ? state.selection.delete(id) : state.selection.add(id);
+                } else if (!state.selection.has(id)) {
+                    state.selection.clear();
+                    state.selection.add(id);
+                }
+                app.render();
+            },
+            
+            selectAll: () => {
+                state.files.forEach(f => state.selection.add(f.id));
+                app.render();
+            },
+
+            open: async (id) => {
+                const f = await db.get(id);
+                if(f.isFolder) router.navigate(id);
+                else {
+                    // Preview
+                    const m = document.getElementById('previewModal');
+                    const c = document.getElementById('previewContent');
+                    
+                    document.getElementById('previewTitle').innerText = f.name;
+                    document.getElementById('previewMeta').innerText = utils.fmtBytes(f.size);
+                    document.getElementById('previewIcon').innerHTML = `<i class="${utils.getIcon(f)} text-lg text-slate-400"></i>`;
+                    
+                    const url = URL.createObjectURL(f.data);
+                    document.getElementById('downloadBtn').onclick = () => {
+                        const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
+                    };
+
+                    document.getElementById('saveTextBtn').classList.add('hidden');
+                    m.classList.remove('hidden');
+
+                    if(f.type.startsWith('image')) c.innerHTML = `<img src="${url}" class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain">`;
+                    else if(f.type.startsWith('video')) c.innerHTML = `<video src="${url}" controls class="max-w-full max-h-[85vh] rounded-lg shadow-2xl"></video>`;
+                    else if(utils.isText(f)) {
+                        const r = new FileReader();
+                        r.onload = e => {
+                            c.innerHTML = `<textarea id="editor" class="w-full h-[80vh] max-w-4xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-6 rounded-lg shadow-xl font-mono text-sm leading-relaxed resize-none focus:outline-none ring-1 ring-slate-200 dark:ring-slate-700">${e.target.result}</textarea>`;
+                            document.getElementById('saveTextBtn').onclick = async () => {
+                                f.data = new Blob([document.getElementById('editor').value], {type: f.type});
+                                f.size = f.data.size;
+                                await db.put(f);
+                                ui.toast('Saved', 'success');
+                                app.render();
+                            };
+                            document.getElementById('saveTextBtn').classList.remove('hidden');
+                        };
+                        r.readAsText(f.data);
+                    } else c.innerHTML = `<div class="text-center text-white/50"><i class="fa-solid fa-file-circle-question text-6xl mb-4"></i><p>No Preview</p></div>`;
+                }
+            },
+
+            upload: async (list) => {
+                if(!list.length) return;
+                ui.toast(`Uploading ${list.length} items...`);
+                for(let file of list) {
+                    await db.add({
+                        id: crypto.randomUUID(),
+                        parentId: state.currentFolderId || 'root',
+                        name: file.name,
+                        isFolder: false,
+                        type: file.type,
+                        size: file.size,
+                        createdAt: Date.now(),
+                        starred: false,
+                        data: file
+                    });
+                }
+                app.render();
+                ui.toast('Upload complete', 'success');
+            },
+
+            deleteSelected: async () => {
+                if(!state.selection.size) return;
+                if(!confirm(`Delete ${state.selection.size} items?`)) return;
+                
+                const recursiveDel = async (id) => {
+                    const f = await db.get(id);
+                    if(f.isFolder) {
+                        const kids = await db.getByParent(id);
+                        for(let k of kids) await recursiveDel(k.id);
+                    }
+                    await db.del(id);
+                };
+
+                for(let id of state.selection) await recursiveDel(id);
+                state.selection.clear();
+                app.render();
+                ui.toast('Deleted', 'success');
+            },
+            
+            toggleStar: async () => {
+                for(let id of state.selection) {
+                    const f = await db.get(id);
+                    f.starred = !f.starred;
+                    await db.put(f);
+                }
+                app.render();
+                ctx.close();
+            },
+
+            showProps: async () => {
+                const id = Array.from(state.selection)[0];
+                const f = await db.get(id);
+                const c = document.getElementById('propsContent');
+                c.innerHTML = `
+                    <div class="grid grid-cols-3 gap-2">
+                        <span class="font-semibold">Type:</span> <span class="col-span-2">${f.isFolder?'Folder':f.type||'Unknown'}</span>
+                        <span class="font-semibold">Size:</span> <span class="col-span-2">${utils.fmtBytes(f.size)}</span>
+                        <span class="font-semibold">Location:</span> <span class="col-span-2 text-xs truncate">${f.parentId}</span>
+                        <span class="font-semibold">Date:</span> <span class="col-span-2 text-xs">${new Date(f.createdAt).toLocaleString()}</span>
+                    </div>`;
+                modals.open('propsModal');
+                ctx.close();
+            }
+        };
+
+        // CONTEXT MENU LOGIC
+        const ctx = {
+            el: document.getElementById('contextMenu'),
+            open: (e, id) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if(!state.selection.has(id)) {
+                    state.selection.clear();
+                    state.selection.add(id);
+                    app.render();
+                }
+                
+                // Build Menu
+                const count = state.selection.size;
+                const single = count === 1;
+                let html = '';
+
+                if(single) {
+                    html += `<button onclick="actions.open('${id}'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-expand w-4"></i> Open</button>`;
+                    html += `<button onclick="modals.open('renameModal'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-pen w-4"></i> Rename</button>`;
+                    html += `<button onclick="actions.toggleStar()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-star w-4"></i> Star/Unstar</button>`;
+                    html += `<button onclick="actions.showProps()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-circle-info w-4"></i> Properties</button>`;
+                } else {
+                    html += `<div class="px-4 py-2 text-xs text-slate-400 font-bold uppercase">${count} Items Selected</div>`;
+                    html += `<button onclick="actions.toggleStar()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-star w-4"></i> Star/Unstar All</button>`;
+                }
+                
+                html += `<div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>`;
+                html += `<button onclick="actions.deleteSelected(); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 flex items-center gap-3"><i class="fa-solid fa-trash w-4"></i> Delete</button>`;
+
+                ctx.el.innerHTML = html;
+                ctx.pos(e.clientX, e.clientY);
+            },
+            
+            bg: (e) => {
+                e.preventDefault();
+                state.selection.clear();
+                app.render();
+                
+                let html = `<button onclick="modals.open('folderModal'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-folder-plus w-4"></i> New Folder</button>`;
+                html += `<button onclick="document.getElementById('fileInput').click(); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-upload w-4"></i> Upload Files</button>`;
+                html += `<div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>`;
+                html += `<button onclick="location.reload()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-rotate-right w-4"></i> Refresh</button>`;
+                
+                ctx.el.innerHTML = html;
+                ctx.pos(e.clientX, e.clientY);
+            },
+
+            pos: (x, y) => {
+                ctx.el.classList.remove('hidden');
+                // Boundary checks
+                if(x + 200 > window.innerWidth) x -= 200;
+                if(y + ctx.el.offsetHeight > window.innerHeight) y -= ctx.el.offsetHeight;
+                ctx.el.style.left = `${x}px`;
+                ctx.el.style.top = `${y}px`;
+            },
+            close: () => ctx.el.classList.add('hidden')
         };
 
         const modals = {
-            open: (id) => {
+            open: id => {
                 const m = document.getElementById(id);
                 m.classList.remove('hidden');
                 m.querySelector('input')?.focus();
+                // Prep rename if needed
+                if(id==='renameModal') {
+                    const fid = Array.from(state.selection)[0];
+                    db.get(fid).then(f => document.getElementById('renameInput').value = f.name);
+                }
             },
-            close: (id) => document.getElementById(id).classList.add('hidden'),
-            
+            close: id => document.getElementById(id).classList.add('hidden'),
             submitFolder: async () => {
-                const name = document.getElementById('folderNameInput').value.trim();
-                if(name) {
-                    await db.add({ id: crypto.randomUUID(), parentId: state.currentFolderId, name, isFolder: true, size: 0, createdAt: Date.now() });
+                const n = document.getElementById('folderNameInput').value.trim();
+                if(n) {
+                    await db.add({id:crypto.randomUUID(), parentId:state.currentFolderId, name:n, isFolder:true, size:0, createdAt:Date.now()});
                     modals.close('folderModal');
-                    document.getElementById('folderNameInput').value = '';
-                    app.loadFolder(state.currentFolderId);
-                    ui.toast('Folder created', 'success');
+                    app.render();
                 }
             },
-
             submitRename: async () => {
-                const val = document.getElementById('renameInput').value.trim();
-                if(val && state.contextItem) {
-                    state.contextItem.name = val;
-                    await db.put(state.contextItem);
+                const n = document.getElementById('renameInput').value.trim();
+                const fid = Array.from(state.selection)[0];
+                if(n && fid) {
+                    const f = await db.get(fid);
+                    f.name = n;
+                    await db.put(f);
                     modals.close('renameModal');
-                    app.loadFolder(state.currentFolderId);
-                    ui.toast('Renamed', 'success');
-                }
-            },
-
-            // Recursive Tree Renderer for Moving
-            openMove: async () => {
-                if (state.selection.size === 0) return;
-                const treeDiv = document.getElementById('moveTree');
-                treeDiv.innerHTML = '<div class="p-4 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i></div>';
-                modals.open('moveModal');
-                
-                document.getElementById('moveSelectedLabel').innerText = `Moving ${state.selection.size} items`;
-                document.getElementById('btnConfirmMove').disabled = true;
-
-                // Build tree
-                const all = await db.getAll();
-                const folders = all.filter(i => i.isFolder).sort((a,b) => a.name.localeCompare(b.name));
-                
-                // Helper to render tree node
-                const renderNode = (parentId, depth) => {
-                    const children = folders.filter(f => f.parentId === parentId);
-                    let html = '';
-                    children.forEach(c => {
-                        // Don't allow moving into self or selected folders
-                        if (state.selection.has(c.id)) return;
-                        
-                        html += `
-                        <div class="hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors" onclick="modals.selectMoveTarget('${c.id}', this)">
-                            <div class="flex items-center p-2" style="padding-left: ${depth * 20 + 8}px">
-                                <i class="fa-solid fa-folder text-yellow-500 mr-2"></i>
-                                <span class="text-sm dark:text-slate-300">${c.name}</span>
-                            </div>
-                        </div>
-                        ${renderNode(c.id, depth + 1)}
-                        `;
-                    });
-                    return html;
-                };
-
-                treeDiv.innerHTML = `
-                    <div class="hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer bg-slate-100 dark:bg-slate-700 mb-1" onclick="modals.selectMoveTarget('root', this)">
-                         <div class="flex items-center p-2">
-                             <i class="fa-solid fa-house text-primary-500 mr-2"></i>
-                             <span class="text-sm font-bold dark:text-white">My Drive (Root)</span>
-                         </div>
-                    </div>
-                    ${renderNode('root', 0)}
-                `;
-            },
-
-            selectMoveTarget: (id, el) => {
-                state.moveTargetId = id;
-                document.querySelectorAll('#moveTree > div, #moveTree div div').forEach(e => e.classList.remove('bg-primary-100', 'dark:bg-primary-900'));
-                el.classList.add('bg-primary-100', 'dark:bg-primary-900');
-                document.getElementById('btnConfirmMove').disabled = false;
-            }
-        };
-
-        const utils = {
-            fmtBytes: (b) => {
-                if(!b) return '0 B';
-                const s = ['B','KB','MB','GB'];
-                const i = Math.floor(Math.log(b)/Math.log(1024));
-                return `${(b/Math.pow(1024,i)).toFixed(1)} ${s[i]}`;
-            },
-            isText: (f) => f.type.startsWith('text/') || f.name.match(/\.(txt|md|js|json|css|html|xml|log|py|java|c)$/i),
-            getIcon: (f) => {
-                if(f.isFolder) return 'fa-solid fa-folder text-yellow-400';
-                if(f.type.startsWith('image')) return 'fa-solid fa-image text-purple-500';
-                if(f.type.startsWith('video')) return 'fa-solid fa-film text-red-500';
-                if(utils.isText(f)) return 'fa-solid fa-file-lines text-slate-500';
-                if(f.type.includes('pdf')) return 'fa-solid fa-file-pdf text-red-600';
-                return 'fa-solid fa-file text-slate-400';
-            },
-            thumb: (f) => {
-                if(f.isFolder) return '<i class="fa-solid fa-folder text-6xl text-yellow-400 drop-shadow-sm"></i>';
-                if(f.type.startsWith('image')) {
-                    const url = URL.createObjectURL(f.data);
-                    return `<img src="${url}" class="w-full h-full object-cover rounded-lg shadow-sm">`;
-                }
-                return `<i class="${utils.getIcon(f)} text-5xl opacity-80"></i>`;
-            },
-            itemClick: (id, isFolder) => {
-                if(isFolder) router.navigate(id);
-                else router.openFile(id);
-            },
-            ctx: (e, id) => {
-                e.preventDefault();
-                // If id is not in selection, select only it
-                if (!state.selection.has(id)) selection.selectOne(id);
-                
-                state.contextItem = state.files.find(f => f.id === id);
-                
-                // Show a native-like menu could be complex in HTML
-                // For now, let's just rely on the bottom selection bar for bulk actions
-                // And maybe trigger the Rename modal for single item if double clicked?
-                // Or let's trigger a small custom menu.
-                
-                // Implemented simplified: Trigger Rename logic directly if 1 item?
-                // Actually, let's just use the Bottom Bar for main actions and add Rename there?
-                // Let's add Rename to bottom bar if only 1 item selected.
-                const bar = document.getElementById('selectionBar');
-                
-                // Add Rename button dynamically
-                const btn = document.createElement('button');
-                btn.id = 'ctxRenameBtn';
-                btn.className = 'hover:text-primary-400 flex flex-col items-center gap-1 text-[10px] transition-colors';
-                btn.innerHTML = '<i class="fa-solid fa-pen text-lg"></i> Rename';
-                btn.onclick = () => modals.open('renameModal');
-                
-                // Remove old rename btn if exists
-                const old = document.getElementById('ctxRenameBtn');
-                if(old) old.remove();
-
-                if (state.selection.size === 1) {
-                    bar.querySelector('.flex').prepend(btn);
-                    // Also set context item for rename
-                    document.getElementById('renameInput').value = state.contextItem.name;
+                    app.render();
                 }
             }
         };
 
-        // --- GLOBAL LISTENERS ---
-        document.getElementById('searchInput').addEventListener('input', () => ui.renderFiles());
-        document.getElementById('fileInput').addEventListener('change', e => { actions.upload(e.target.files); e.target.value=''; });
+        const ui = {
+            toggleTheme: () => {
+                document.documentElement.classList.toggle('dark');
+                state.darkMode = !state.darkMode;
+                localStorage.setItem('theme', state.darkMode?'dark':'light');
+            },
+            toggleSidebar: () => {
+                document.getElementById('sidebar').classList.toggle('-translate-x-full');
+                document.getElementById('sidebarOverlay').classList.toggle('hidden');
+            },
+            toast: (msg, type='info') => {
+                const c = document.getElementById('toastContainer');
+                const d = document.createElement('div');
+                d.className = `${type==='success'?'bg-emerald-500':'bg-slate-800 dark:bg-slate-700'} text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 text-sm font-medium animate-fade-in`;
+                d.innerHTML = `<i class="fa-solid ${type==='success'?'fa-check-circle':'fa-info-circle'}"></i> ${msg}`;
+                c.appendChild(d);
+                setTimeout(()=>d.remove(), 3000);
+            }
+        };
+
+        // EVENT LISTENERS
+        window.addEventListener('keydown', e => {
+            if(e.key === 'Delete') actions.deleteSelected();
+            if(e.key === 'Escape') { state.selection.clear(); app.render(); ctx.close(); }
+            if(e.key === 'a' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); actions.selectAll(); }
+        });
+
+        // INIT
+        if(state.darkMode) document.documentElement.classList.add('dark');
+        document.getElementById('searchInput').addEventListener('input', app.render);
+        document.getElementById('fileInput').addEventListener('change', e => {actions.upload(e.target.files); e.target.value=''});
         
         // Drag Drop
         const dz = document.getElementById('dropZone');
         let dragC = 0;
-        window.addEventListener('dragenter', e => { e.preventDefault(); dragC++; dz.classList.remove('hidden'); });
-        window.addEventListener('dragleave', e => { e.preventDefault(); dragC--; if(dragC===0) dz.classList.add('hidden'); });
-        window.addEventListener('dragover', e => e.preventDefault());
-        window.addEventListener('drop', e => { e.preventDefault(); dragC=0; dz.classList.add('hidden'); if(e.dataTransfer.files.length) actions.upload(e.dataTransfer.files); });
+        window.addEventListener('dragenter', e=>{e.preventDefault(); dragC++; dz.classList.remove('hidden')});
+        window.addEventListener('dragleave', e=>{e.preventDefault(); dragC--; if(dragC===0)dz.classList.add('hidden')});
+        window.addEventListener('dragover', e=>e.preventDefault());
+        window.addEventListener('drop', e=>{e.preventDefault(); dragC=0; dz.classList.add('hidden'); if(e.dataTransfer.files.length) actions.upload(e.dataTransfer.files)});
 
-        // Init
         (async () => { await db.init(); router.init(); })();
+
     </script>
 </body>
 </html>
