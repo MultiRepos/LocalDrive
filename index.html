@@ -1,13 +1,586 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local Drive</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+    
+    <!-- Tailwind CSS (No build step required) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+        
+        /* Loader Animation */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden font-sans select-none">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white">
+                <i class="fa-solid fa-hard-drive"></i>
+            </div>
+            <h1 class="text-xl font-bold text-slate-700">LocalDrive</h1>
+        </div>
+
+        <div class="px-4 pb-4">
+            <div class="relative group">
+                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center w-full py-3 px-4 bg-white border border-slate-300 shadow-sm rounded-full cursor-pointer hover:shadow-md hover:bg-blue-50 transition-all">
+                    <i class="fa-solid fa-plus text-blue-600 mr-2"></i>
+                    <span class="font-medium text-slate-600">New File</span>
+                </button>
+                <input type="file" id="fileInput" multiple class="hidden">
+            </div>
+            <button onclick="openFolderModal()" class="mt-3 w-full py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-folder-plus mr-2"></i> New Folder
+            </button>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto px-3 space-y-1">
+            <a href="#" onclick="navigateTo('root')" class="flex items-center px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-full">
+                <i class="fa-solid fa-house w-5"></i> My Drive
+            </a>
+            <a href="#" class="flex items-center px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-full cursor-not-allowed opacity-50">
+                <i class="fa-solid fa-share-nodes w-5"></i> Shared
+            </a>
+            <a href="#" class="flex items-center px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-full cursor-not-allowed opacity-50">
+                <i class="fa-solid fa-trash w-5"></i> Trash
+            </a>
+        </nav>
+
+        <div class="p-5 border-t border-slate-100">
+            <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-500">Storage</span>
+                <span class="text-slate-400" id="storageText">Calculating...</span>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-1.5">
+                <div id="storageBar" class="bg-blue-600 h-1.5 rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-full relative">
+        
+        <!-- Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
+            <!-- Mobile Menu Button & Breadcrumbs -->
+            <div class="flex items-center gap-3 overflow-hidden">
+                <button class="md:hidden text-slate-500" onclick="navigateTo('root')">
+                    <i class="fa-solid fa-home"></i>
+                </button>
+                <div id="breadcrumbs" class="flex items-center text-lg text-slate-600 whitespace-nowrap overflow-x-auto no-scrollbar">
+                    <!-- Breadcrumbs injected by JS -->
+                    <span class="font-bold">My Drive</span>
+                </div>
+            </div>
+
+            <!-- Search & View Toggle -->
+            <div class="flex items-center gap-3">
+                <div class="relative hidden sm:block">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" placeholder="Search files" class="bg-slate-100 border-none rounded-full py-2 pl-8 pr-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-48 lg:w-64">
+                </div>
+                <button onclick="toggleView()" class="p-2 rounded-full hover:bg-slate-100 text-slate-500">
+                    <i id="viewIcon" class="fa-solid fa-list"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Drop Zone Overlay -->
+        <div id="dropZone" class="hidden absolute inset-0 bg-blue-50/90 z-50 flex items-center justify-center border-4 border-blue-500 border-dashed m-4 rounded-2xl">
+            <div class="text-center pointer-events-none">
+                <i class="fa-solid fa-cloud-arrow-up text-6xl text-blue-500 mb-4"></i>
+                <h2 class="text-2xl font-bold text-blue-700">Drop files to upload</h2>
+            </div>
+        </div>
+
+        <!-- File Area -->
+        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative">
+            <!-- Content injected by JS -->
+            <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                <div class="loader mb-4"></div>
+                <p>Loading your files...</p>
+            </div>
+        </div>
+
+        <!-- Mobile FAB -->
+        <button onclick="document.getElementById('fileInput').click()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-white text-blue-600 rounded-xl shadow-lg flex items-center justify-center text-2xl z-30 border border-blue-100">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+
+    </main>
+
+    <!-- MODALS -->
+    
+    <!-- Create Folder Modal -->
+    <div id="folderModal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6">
+            <h3 class="text-lg font-bold mb-4">New Folder</h3>
+            <input type="text" id="folderNameInput" placeholder="Folder name" class="w-full border border-slate-300 rounded-lg p-2 mb-4 focus:outline-none focus:border-blue-500" onkeydown="if(event.key === 'Enter') createFolder()">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeFolderModal()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
+                <button onclick="createFolder()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/95 z-50 flex flex-col">
+        <div class="flex justify-between items-center p-4 text-white bg-black/20">
+            <h3 id="previewTitle" class="font-medium truncate max-w-md">Filename.jpg</h3>
+            <div class="flex gap-4">
+                <button id="downloadBtn" class="hover:text-blue-400"><i class="fa-solid fa-download text-xl"></i></button>
+                <button onclick="closePreview()" class="hover:text-red-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+        </div>
+        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 overflow-auto">
+            <!-- Content injected here -->
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- CONFIGURATION & STATE ---
+        const DB_NAME = 'LocalDriveDB';
+        const STORE_NAME = 'files';
+        let db;
+        let currentFolderId = 'root';
+        let folderChain = [{ id: 'root', name: 'My Drive' }];
+        let viewMode = 'grid'; // 'grid' or 'list'
+        let currentFiles = [];
+
+        // --- DATABASE LAYER (IndexedDB) ---
+        const initDB = () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                
+                request.onupgradeneeded = (e) => {
+                    db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        store.createIndex('parentId', 'parentId', { unique: false });
+                    }
+                };
+
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+                
+                request.onerror = (e) => reject('DB Error');
+            });
+        };
+
+        const addFileToDB = (fileObj) => {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([STORE_NAME], 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.add(fileObj);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject();
+            });
+        };
+
+        const getFilesFromDB = (parentId) => {
+            return new Promise((resolve) => {
+                const tx = db.transaction([STORE_NAME], 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const index = store.index('parentId');
+                const request = index.getAll(parentId);
+                request.onsuccess = () => resolve(request.result);
+            });
+        };
+
+        const getAllFilesForStorage = () => {
+             return new Promise((resolve) => {
+                const tx = db.transaction([STORE_NAME], 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+            });
+        };
+
+        const deleteItemFromDB = (id) => {
+             return new Promise((resolve) => {
+                const tx = db.transaction([STORE_NAME], 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(id);
+                tx.oncomplete = () => resolve();
+            });
+        };
+
+        const getItem = (id) => {
+            return new Promise(resolve => {
+                const tx = db.transaction([STORE_NAME], 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.get(id);
+                req.onsuccess = () => resolve(req.result);
+            });
+        }
+
+        // Recursive delete
+        const deleteRecursive = async (itemId) => {
+            const item = await getItem(itemId);
+            if(!item) return;
+
+            if(item.isFolder) {
+                const children = await getFilesFromDB(itemId);
+                for(let child of children) {
+                    await deleteRecursive(child.id);
+                }
+            }
+            await deleteItemFromDB(itemId);
+        }
+
+        // --- UI LOGIC ---
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function loadFiles() {
+            const fileArea = document.getElementById('fileArea');
+            
+            // Fetch
+            const items = await getFilesFromDB(currentFolderId);
+            currentFiles = items.sort((a, b) => {
+                if (a.isFolder && !b.isFolder) return -1;
+                if (!a.isFolder && b.isFolder) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            // Filter by search
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = currentFiles.filter(i => i.name.toLowerCase().includes(query));
+
+            // Render
+            if (filtered.length === 0) {
+                fileArea.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-slate-400 mt-10">
+                        <i class="fa-regular fa-folder-open text-6xl mb-4 opacity-20"></i>
+                        <p>This folder is empty</p>
+                    </div>`;
+            } else {
+                if (viewMode === 'grid') {
+                    renderGrid(filtered);
+                } else {
+                    renderList(filtered);
+                }
+            }
+            
+            updateBreadcrumbs();
+            updateStorage();
+        }
+
+        function renderGrid(items) {
+            const html = items.map(item => {
+                let iconClass = "fa-file text-gray-400";
+                let colorClass = "text-gray-500";
+                
+                if (item.isFolder) {
+                    iconClass = "fa-folder text-blue-500";
+                    colorClass = "text-blue-500";
+                } else if (item.type.startsWith('image')) iconClass = "fa-image text-purple-500";
+                else if (item.type.startsWith('video')) iconClass = "fa-film text-red-500";
+                else if (item.type.includes('pdf')) iconClass = "fa-file-pdf text-red-500";
+                else if (item.type.includes('text')) iconClass = "fa-file-lines text-slate-500";
+
+                // Thumbnail logic for images
+                let thumbnailHtml = `<i class="fa-solid ${iconClass} text-5xl mb-3"></i>`;
+                if (item.type && item.type.startsWith('image') && !item.isFolder) {
+                   const url = URL.createObjectURL(item.data);
+                   thumbnailHtml = `<img src="${url}" class="w-full h-32 object-cover rounded-lg mb-2" onload="URL.revokeObjectURL(this.src)">`;
+                }
+
+                return `
+                    <div onclick="handleItemClick('${item.id}', ${item.isFolder})" 
+                         class="bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer transition-all group relative h-48 justify-between">
+                        <button onclick="event.stopPropagation(); promptDelete('${item.id}')" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-full text-red-500 transition-opacity"><i class="fa-solid fa-trash"></i></button>
+                        <div class="w-full flex items-center justify-center flex-1 overflow-hidden">
+                           ${thumbnailHtml}
+                        </div>
+                        <div class="w-full">
+                            <p class="text-sm font-medium text-slate-700 truncate w-full">${item.name}</p>
+                            <p class="text-xs text-slate-400 mt-0.5">${item.isFolder ? 'Folder' : formatBytes(item.size)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('fileArea').innerHTML = `<div class="folder-grid">${html}</div>`;
+        }
+
+        function renderList(items) {
+            const html = `
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3 font-medium">Name</th>
+                                <th class="px-4 py-3 font-medium">Size</th>
+                                <th class="px-4 py-3 font-medium text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            ${items.map(item => `
+                                <tr onclick="handleItemClick('${item.id}', ${item.isFolder})" class="hover:bg-slate-50 cursor-pointer">
+                                    <td class="px-4 py-3 flex items-center gap-3">
+                                        <i class="fa-solid ${item.isFolder ? 'fa-folder text-blue-500' : 'fa-file text-slate-400'}"></i>
+                                        <span class="truncate font-medium text-slate-700">${item.name}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-500">${item.isFolder ? '-' : formatBytes(item.size)}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button onclick="event.stopPropagation(); promptDelete('${item.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+            document.getElementById('fileArea').innerHTML = html;
+        }
+
+        function updateBreadcrumbs() {
+            const container = document.getElementById('breadcrumbs');
+            container.innerHTML = folderChain.map((folder, index) => {
+                const isLast = index === folderChain.length - 1;
+                return `
+                    <span class="flex items-center">
+                        ${index > 0 ? '<i class="fa-solid fa-chevron-right text-xs mx-2 text-slate-300"></i>' : ''}
+                        <button onclick="navigateToBreadcrumb(${index})" class="${isLast ? 'font-bold text-slate-800' : 'text-slate-500 hover:text-blue-600'} px-1 rounded">
+                            ${folder.name}
+                        </button>
+                    </span>
+                `;
+            }).join('');
+        }
+
+        async function updateStorage() {
+            const allFiles = await getAllFilesForStorage();
+            const totalBytes = allFiles.reduce((acc, file) => acc + (file.size || 0), 0);
+            const quota = 1024 * 1024 * 1024; // Assumed 1GB soft limit visualization
+            
+            const percent = Math.min((totalBytes / quota) * 100, 100);
+            document.getElementById('storageBar').style.width = `${percent}%`;
+            document.getElementById('storageText').innerText = formatBytes(totalBytes) + ' used';
+        }
+
+        // --- ACTIONS ---
+
+        function handleItemClick(id, isFolder) {
+            const item = currentFiles.find(i => i.id === id);
+            if (isFolder) {
+                folderChain.push({ id: item.id, name: item.name });
+                currentFolderId = item.id;
+                loadFiles();
+            } else {
+                openPreview(item);
+            }
+        }
+
+        function navigateTo(folderId) {
+            if (folderId === 'root') {
+                folderChain = [{ id: 'root', name: 'My Drive' }];
+                currentFolderId = 'root';
+            }
+            loadFiles();
+        }
+
+        function navigateToBreadcrumb(index) {
+            folderChain = folderChain.slice(0, index + 1);
+            currentFolderId = folderChain[folderChain.length - 1].id;
+            loadFiles();
+        }
+
+        async function handleFileUpload(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            // Visual feedback could go here
+            for (let file of files) {
+                const newFile = {
+                    id: crypto.randomUUID(),
+                    parentId: currentFolderId,
+                    name: file.name,
+                    isFolder: false,
+                    type: file.type,
+                    size: file.size,
+                    createdAt: Date.now(),
+                    data: file
+                };
+                await addFileToDB(newFile);
+            }
+            
+            // Reset input
+            e.target.value = '';
+            loadFiles();
+        }
+
+        function openFolderModal() {
+            document.getElementById('folderModal').classList.remove('hidden');
+            document.getElementById('folderNameInput').focus();
+        }
+
+        function closeFolderModal() {
+            document.getElementById('folderModal').classList.add('hidden');
+            document.getElementById('folderNameInput').value = '';
+        }
+
+        async function createFolder() {
+            const name = document.getElementById('folderNameInput').value.trim();
+            if (!name) return;
+
+            const newFolder = {
+                id: crypto.randomUUID(),
+                parentId: currentFolderId,
+                name: name,
+                isFolder: true,
+                size: 0,
+                createdAt: Date.now()
+            };
+
+            await addFileToDB(newFolder);
+            closeFolderModal();
+            loadFiles();
+        }
+
+        async function promptDelete(id) {
+            if(confirm('Delete this item permanently?')) {
+                await deleteRecursive(id);
+                loadFiles();
+            }
+        }
+
+        function toggleView() {
+            viewMode = viewMode === 'grid' ? 'list' : 'grid';
+            document.getElementById('viewIcon').className = `fa-solid ${viewMode === 'grid' ? 'fa-list' : 'fa-border-all'}`;
+            loadFiles();
+        }
+
+        // --- PREVIEW SYSTEM ---
+        function openPreview(item) {
+            const modal = document.getElementById('previewModal');
+            const content = document.getElementById('previewContent');
+            const title = document.getElementById('previewTitle');
+            const dlBtn = document.getElementById('downloadBtn');
+            
+            modal.classList.remove('hidden');
+            title.innerText = item.name;
+            content.innerHTML = '<div class="loader"></div>';
+
+            // Download Handler
+            const url = URL.createObjectURL(item.data);
+            dlBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = item.name;
+                a.click();
+            };
+
+            // Preview Logic
+            if (item.type.startsWith('image/')) {
+                content.innerHTML = `<img src="${url}" class="max-h-full max-w-full rounded shadow-lg">`;
+            } else if (item.type.startsWith('video/')) {
+                content.innerHTML = `<video src="${url}" controls class="max-h-full max-w-full rounded shadow-lg"></video>`;
+            } else if (item.type.startsWith('audio/')) {
+                content.innerHTML = `
+                    <div class="bg-slate-800 p-10 rounded-2xl flex flex-col items-center gap-4">
+                        <i class="fa-solid fa-music text-6xl text-pink-500 animate-pulse"></i>
+                        <audio src="${url}" controls></audio>
+                    </div>`;
+            } else if (item.type.startsWith('text/') || item.name.endsWith('.txt') || item.name.endsWith('.md') || item.name.endsWith('.js') || item.name.endsWith('.html')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    content.innerHTML = `<pre class="bg-white text-slate-800 p-6 rounded-lg overflow-auto w-full max-w-3xl h-full text-sm font-mono whitespace-pre-wrap">${e.target.result.replace(/</g, "&lt;")}</pre>`;
+                };
+                reader.readAsText(item.data);
+            } else {
+                content.innerHTML = `
+                    <div class="text-center text-slate-400">
+                        <i class="fa-solid fa-file-circle-question text-6xl mb-4"></i>
+                        <p class="text-xl">Preview not available</p>
+                        <p class="text-sm mt-2">Please download the file to view it.</p>
+                    </div>`;
+            }
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // --- DRAG AND DROP ---
+        const dropZone = document.getElementById('dropZone');
+        let dragCounter = 0;
+
+        window.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dragCounter++;
+            dropZone.classList.remove('hidden');
+        });
+
+        window.addEventListener('dragleave', (e) => {
+            dragCounter--;
+            if (dragCounter === 0) dropZone.classList.add('hidden');
+        });
+
+        window.addEventListener('dragover', (e) => e.preventDefault());
+
+        window.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            dropZone.classList.add('hidden');
+            
+            if (e.dataTransfer.files.length) {
+                await handleFileUpload({ target: { files: e.dataTransfer.files } });
+            }
+        });
+
+        // Search Listener
+        document.getElementById('searchInput').addEventListener('input', loadFiles);
+
+        // File Input Listener
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        // Init
+        initDB().then(() => {
+            loadFiles();
+        });
+
+    </script>
+</body>
 </html>
+
 
