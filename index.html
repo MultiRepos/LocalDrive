@@ -3,581 +3,848 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Drive</title>
+    <title>LocalDrive</title>
     
-    <!-- Tailwind CSS (No build step required) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Icons -->
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Tailwind Configuration for Custom Colors/Fonts -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        /* Custom UI Tweaks */
+        body { -webkit-font-smoothing: antialiased; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
         .folder-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
             gap: 1rem;
         }
-        
-        /* Loader Animation */
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 24px;
-            height: 24px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
-            animation: spin 1s linear infinite;
+
+        /* Context Menu */
+        #contextMenu {
+            animation: fadeIn 0.1s ease-out;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .toast { animation: slideUp 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden font-sans select-none">
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden selection:bg-primary-100 selection:text-primary-700">
 
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex">
+    <aside class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex shrink-0 z-20">
         <div class="p-6 flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white">
-                <i class="fa-solid fa-hard-drive"></i>
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                <i class="fa-solid fa-cloud text-lg"></i>
             </div>
-            <h1 class="text-xl font-bold text-slate-700">LocalDrive</h1>
+            <h1 class="text-xl font-bold tracking-tight text-slate-800">LocalDrive</h1>
         </div>
 
-        <div class="px-4 pb-4">
+        <div class="px-5 pb-6">
             <div class="relative group">
-                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center w-full py-3 px-4 bg-white border border-slate-300 shadow-sm rounded-full cursor-pointer hover:shadow-md hover:bg-blue-50 transition-all">
-                    <i class="fa-solid fa-plus text-blue-600 mr-2"></i>
-                    <span class="font-medium text-slate-600">New File</span>
+                <button onclick="triggerUpload()" class="flex items-center justify-center w-full py-3.5 px-4 bg-primary-600 text-white shadow-lg shadow-blue-200 rounded-xl cursor-pointer hover:bg-primary-700 hover:shadow-xl transition-all active:scale-95">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    <span class="font-semibold">Upload File</span>
                 </button>
                 <input type="file" id="fileInput" multiple class="hidden">
             </div>
-            <button onclick="openFolderModal()" class="mt-3 w-full py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg flex items-center justify-center">
-                <i class="fa-solid fa-folder-plus mr-2"></i> New Folder
+            <button onclick="modals.openFolder()" class="mt-3 w-full py-2.5 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center transition-colors">
+                <i class="fa-regular fa-folder mr-2"></i> New Folder
             </button>
         </div>
 
-        <nav class="flex-1 overflow-y-auto px-3 space-y-1">
-            <a href="#" onclick="navigateTo('root')" class="flex items-center px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 rounded-full">
-                <i class="fa-solid fa-house w-5"></i> My Drive
+        <nav class="flex-1 overflow-y-auto px-4 space-y-1">
+            <a href="#/folder/root" class="flex items-center px-4 py-2.5 text-sm font-medium bg-blue-50 text-primary-700 rounded-lg group">
+                <i class="fa-solid fa-house w-5 group-hover:scale-110 transition-transform"></i> My Drive
             </a>
-            <a href="#" class="flex items-center px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-full cursor-not-allowed opacity-50">
-                <i class="fa-solid fa-share-nodes w-5"></i> Shared
-            </a>
-            <a href="#" class="flex items-center px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-full cursor-not-allowed opacity-50">
-                <i class="fa-solid fa-trash w-5"></i> Trash
-            </a>
+            <div class="pt-4 pb-2 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Storage</div>
+            <div class="px-4">
+                <div class="flex justify-between text-xs mb-1.5 font-medium">
+                    <span class="text-slate-600" id="storagePercent">0%</span>
+                    <span class="text-slate-400" id="storageText">Calculating...</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div id="storageBar" class="bg-primary-500 h-2 rounded-full transition-all duration-1000 w-0"></div>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">Files are stored in your browser's IndexedDB. Do not clear browser data.</p>
+            </div>
         </nav>
-
-        <div class="p-5 border-t border-slate-100">
-            <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-500">Storage</span>
-                <span class="text-slate-400" id="storageText">Calculating...</span>
-            </div>
-            <div class="w-full bg-slate-200 rounded-full h-1.5">
-                <div id="storageBar" class="bg-blue-600 h-1.5 rounded-full" style="width: 0%"></div>
-            </div>
-        </div>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-full relative">
+    <main class="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50/50">
         
-        <!-- Header -->
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0">
-            <!-- Mobile Menu Button & Breadcrumbs -->
-            <div class="flex items-center gap-3 overflow-hidden">
-                <button class="md:hidden text-slate-500" onclick="navigateTo('root')">
-                    <i class="fa-solid fa-home"></i>
+        <!-- Top Bar -->
+        <header class="h-16 bg-white/80 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-10 sticky top-0">
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-3 overflow-hidden flex-1 mr-4">
+                <button class="md:hidden text-slate-500 p-2 -ml-2 hover:bg-slate-100 rounded-lg" onclick="router.navigate('root')">
+                    <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <div id="breadcrumbs" class="flex items-center text-lg text-slate-600 whitespace-nowrap overflow-x-auto no-scrollbar">
-                    <!-- Breadcrumbs injected by JS -->
-                    <span class="font-bold">My Drive</span>
+                <div id="breadcrumbs" class="flex items-center text-sm font-medium text-slate-600 whitespace-nowrap overflow-x-auto no-scrollbar mask-linear-fade">
+                    <!-- Injected by JS -->
                 </div>
             </div>
 
-            <!-- Search & View Toggle -->
-            <div class="flex items-center gap-3">
+            <!-- Controls -->
+            <div class="flex items-center gap-2 lg:gap-3 shrink-0">
                 <div class="relative hidden sm:block">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="Search files" class="bg-slate-100 border-none rounded-full py-2 pl-8 pr-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-48 lg:w-64">
+                    <input type="text" id="searchInput" placeholder="Search" class="bg-slate-100 border-transparent hover:bg-slate-50 border hover:border-slate-300 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none w-48 transition-all">
                 </div>
-                <button onclick="toggleView()" class="p-2 rounded-full hover:bg-slate-100 text-slate-500">
-                    <i id="viewIcon" class="fa-solid fa-list"></i>
-                </button>
+                
+                <div class="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
+                <select id="sortSelect" onchange="app.handleSort(this.value)" class="bg-transparent text-sm font-medium text-slate-600 focus:outline-none cursor-pointer hover:text-primary-600 hidden sm:block">
+                    <option value="name">Name</option>
+                    <option value="date">Date</option>
+                    <option value="size">Size</option>
+                </select>
+
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button onclick="app.toggleView('grid')" id="btnGrid" class="p-1.5 rounded shadow-sm bg-white text-primary-600 transition-all"><i class="fa-solid fa-border-all text-sm"></i></button>
+                    <button onclick="app.toggleView('list')" id="btnList" class="p-1.5 rounded text-slate-500 hover:text-slate-700 transition-all"><i class="fa-solid fa-list text-sm"></i></button>
+                </div>
             </div>
         </header>
 
-        <!-- Drop Zone Overlay -->
-        <div id="dropZone" class="hidden absolute inset-0 bg-blue-50/90 z-50 flex items-center justify-center border-4 border-blue-500 border-dashed m-4 rounded-2xl">
-            <div class="text-center pointer-events-none">
-                <i class="fa-solid fa-cloud-arrow-up text-6xl text-blue-500 mb-4"></i>
-                <h2 class="text-2xl font-bold text-blue-700">Drop files to upload</h2>
+        <!-- Drop Zone -->
+        <div id="dropZone" class="hidden absolute inset-0 bg-primary-50/90 z-50 flex flex-col items-center justify-center border-4 border-primary-400 border-dashed m-4 rounded-3xl backdrop-blur-sm transition-all">
+            <div class="bg-white p-6 rounded-full shadow-xl mb-6 animate-bounce">
+                <i class="fa-solid fa-cloud-arrow-up text-5xl text-primary-500"></i>
             </div>
+            <h2 class="text-3xl font-bold text-primary-800">Drop files here</h2>
+            <p class="text-primary-600 mt-2">to upload them to this folder</p>
         </div>
 
-        <!-- File Area -->
-        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative">
-            <!-- Content injected by JS -->
-            <div class="flex flex-col items-center justify-center h-full text-slate-400">
-                <div class="loader mb-4"></div>
-                <p>Loading your files...</p>
-            </div>
+        <!-- File List Area -->
+        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative scroll-smooth">
+            <!-- Content injected here -->
         </div>
-
-        <!-- Mobile FAB -->
-        <button onclick="document.getElementById('fileInput').click()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-white text-blue-600 rounded-xl shadow-lg flex items-center justify-center text-2xl z-30 border border-blue-100">
-            <i class="fa-solid fa-plus"></i>
-        </button>
 
     </main>
 
-    <!-- MODALS -->
+    <!-- Context Menu -->
+    <div id="contextMenu" class="fixed hidden bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 w-48 z-[60] text-sm text-slate-700 font-medium transform origin-top-left">
+        <div class="px-4 py-2 border-b border-slate-50 text-xs text-slate-400 uppercase tracking-wider" id="ctxTitle">Item</div>
+        <button onclick="actions.open()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-expand w-6 opacity-70"></i> Open</button>
+        <button onclick="actions.rename()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-pen w-6 opacity-70"></i> Rename</button>
+        <button onclick="actions.download()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-download w-6 opacity-70"></i> Download</button>
+        <div class="h-px bg-slate-100 my-1"></div>
+        <button onclick="actions.delete()" class="w-full text-left px-4 py-2 hover:bg-red-50 hover:text-red-600 flex items-center"><i class="fa-solid fa-trash w-6 opacity-70"></i> Delete</button>
+    </div>
+
+    <!-- Modals -->
     
-    <!-- Create Folder Modal -->
-    <div id="folderModal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6">
-            <h3 class="text-lg font-bold mb-4">New Folder</h3>
-            <input type="text" id="folderNameInput" placeholder="Folder name" class="w-full border border-slate-300 rounded-lg p-2 mb-4 focus:outline-none focus:border-blue-500" onkeydown="if(event.key === 'Enter') createFolder()">
-            <div class="flex justify-end gap-2">
-                <button onclick="closeFolderModal()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg">Cancel</button>
-                <button onclick="createFolder()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Create</button>
+    <!-- New Folder Modal -->
+    <div id="folderModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform">
+            <h3 class="text-lg font-bold mb-4 text-slate-800">Create New Folder</h3>
+            <input type="text" id="folderNameInput" placeholder="My New Folder" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" onkeydown="if(event.key === 'Enter') modals.submitFolder()">
+            <div class="flex justify-end gap-3">
+                <button onclick="modals.closeFolder()" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl font-medium transition-colors">Cancel</button>
+                <button onclick="modals.submitFolder()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg shadow-blue-200 transition-all active:scale-95">Create Folder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 class="text-lg font-bold mb-4 text-slate-800">Rename Item</h3>
+            <input type="text" id="renameInput" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500" onkeydown="if(event.key === 'Enter') modals.submitRename()">
+            <div class="flex justify-end gap-3">
+                <button onclick="document.getElementById('renameModal').classList.add('hidden')" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl font-medium">Cancel</button>
+                <button onclick="modals.submitRename()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg">Save</button>
             </div>
         </div>
     </div>
 
     <!-- Preview Modal -->
-    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/95 z-50 flex flex-col">
-        <div class="flex justify-between items-center p-4 text-white bg-black/20">
-            <h3 id="previewTitle" class="font-medium truncate max-w-md">Filename.jpg</h3>
-            <div class="flex gap-4">
-                <button id="downloadBtn" class="hover:text-blue-400"><i class="fa-solid fa-download text-xl"></i></button>
-                <button onclick="closePreview()" class="hover:text-red-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/95 z-50 flex flex-col backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 text-white bg-black/20 shrink-0">
+            <div class="flex items-center gap-4 overflow-hidden">
+                <div class="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center shrink-0" id="previewIcon">
+                    <!-- Icon -->
+                </div>
+                <div class="min-w-0">
+                    <h3 id="previewTitle" class="font-bold text-lg truncate">Filename.jpg</h3>
+                    <p id="previewMeta" class="text-xs text-slate-400">2.4 MB • Today</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="downloadBtn" class="p-3 hover:bg-white/10 rounded-full transition-colors" title="Download"><i class="fa-solid fa-download text-lg"></i></button>
+                <button onclick="router.closePreview()" class="p-3 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors" title="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
         </div>
-        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 overflow-auto">
+        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-auto">
             <!-- Content injected here -->
         </div>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
-    <script>
-        // --- CONFIGURATION & STATE ---
-        const DB_NAME = 'LocalDriveDB';
-        const STORE_NAME = 'files';
-        let db;
-        let currentFolderId = 'root';
-        let folderChain = [{ id: 'root', name: 'My Drive' }];
-        let viewMode = 'grid'; // 'grid' or 'list'
-        let currentFiles = [];
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
-        // --- DATABASE LAYER (IndexedDB) ---
-        const initDB = () => {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, 1);
-                
-                request.onupgradeneeded = (e) => {
-                    db = e.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                        store.createIndex('parentId', 'parentId', { unique: false });
+    <!-- LOGIC -->
+    <script>
+        // --- CONSTANTS & STATE ---
+        const DB_NAME = 'LocalDriveDB';
+        const DB_VER = 1;
+        const STORE = 'files';
+        
+        const state = {
+            db: null,
+            currentFolderId: 'root',
+            currentFolderData: null, // Holds the actual folder object for title
+            viewMode: 'grid', // 'grid' | 'list'
+            sortBy: 'name', // 'name' | 'date' | 'size'
+            contextItem: null, // Item currently right-clicked
+            files: [],
+            pathCache: [] // Array of folder objects for breadcrumbs
+        };
+
+        // --- DATABASE LAYER ---
+        const db = {
+            init: () => new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VER);
+                req.onupgradeneeded = e => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains(STORE)) {
+                        const s = d.createObjectStore(STORE, { keyPath: 'id' });
+                        s.createIndex('parentId', 'parentId', { unique: false });
                     }
                 };
+                req.onsuccess = e => { state.db = e.target.result; resolve(); };
+                req.onerror = e => reject(e);
+            }),
 
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    resolve(db);
-                };
-                
-                request.onerror = (e) => reject('DB Error');
-            });
-        };
-
-        const addFileToDB = (fileObj) => {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction([STORE_NAME], 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                store.add(fileObj);
+            add: item => new Promise((resolve, reject) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).add(item);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject();
-            });
-        };
+            }),
 
-        const getFilesFromDB = (parentId) => {
-            return new Promise((resolve) => {
-                const tx = db.transaction([STORE_NAME], 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const index = store.index('parentId');
-                const request = index.getAll(parentId);
-                request.onsuccess = () => resolve(request.result);
-            });
-        };
-
-        const getAllFilesForStorage = () => {
-             return new Promise((resolve) => {
-                const tx = db.transaction([STORE_NAME], 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.getAll();
-                request.onsuccess = () => resolve(request.result);
-            });
-        };
-
-        const deleteItemFromDB = (id) => {
-             return new Promise((resolve) => {
-                const tx = db.transaction([STORE_NAME], 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                store.delete(id);
+            update: item => new Promise((resolve) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).put(item);
                 tx.oncomplete = () => resolve();
-            });
+            }),
+
+            delete: id => new Promise((resolve) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).delete(id);
+                tx.oncomplete = () => resolve();
+            }),
+
+            get: id => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const req = tx.objectStore(STORE).get(id);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            }),
+
+            getChildren: parentId => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const index = tx.objectStore(STORE).index('parentId');
+                const req = index.getAll(parentId);
+                req.onsuccess = () => resolve(req.result);
+            }),
+
+            getAll: () => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const req = tx.objectStore(STORE).getAll();
+                req.onsuccess = () => resolve(req.result);
+            }),
+
+            // Build path from current node back to root
+            buildPath: async (folderId) => {
+                const path = [];
+                let currId = folderId;
+                
+                // Safety break after 20 levels
+                let safety = 0; 
+                while(currId !== 'root' && safety < 20) {
+                    const folder = await db.get(currId);
+                    if(!folder) break;
+                    path.unshift(folder);
+                    currId = folder.parentId;
+                    safety++;
+                }
+                path.unshift({ id: 'root', name: 'My Drive', isFolder: true });
+                return path;
+            }
         };
 
-        const getItem = (id) => {
-            return new Promise(resolve => {
-                const tx = db.transaction([STORE_NAME], 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const req = store.get(id);
-                req.onsuccess = () => resolve(req.result);
-            });
-        }
+        // --- ROUTER ---
+        const router = {
+            init: () => {
+                window.addEventListener('hashchange', router.handle);
+                router.handle(); // Initial load
+            },
 
-        // Recursive delete
-        const deleteRecursive = async (itemId) => {
-            const item = await getItem(itemId);
-            if(!item) return;
-
-            if(item.isFolder) {
-                const children = await getFilesFromDB(itemId);
-                for(let child of children) {
-                    await deleteRecursive(child.id);
-                }
-            }
-            await deleteItemFromDB(itemId);
-        }
-
-        // --- UI LOGIC ---
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        async function loadFiles() {
-            const fileArea = document.getElementById('fileArea');
-            
-            // Fetch
-            const items = await getFilesFromDB(currentFolderId);
-            currentFiles = items.sort((a, b) => {
-                if (a.isFolder && !b.isFolder) return -1;
-                if (!a.isFolder && b.isFolder) return 1;
-                return a.name.localeCompare(b.name);
-            });
-
-            // Filter by search
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = currentFiles.filter(i => i.name.toLowerCase().includes(query));
-
-            // Render
-            if (filtered.length === 0) {
-                fileArea.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-slate-400 mt-10">
-                        <i class="fa-regular fa-folder-open text-6xl mb-4 opacity-20"></i>
-                        <p>This folder is empty</p>
-                    </div>`;
-            } else {
-                if (viewMode === 'grid') {
-                    renderGrid(filtered);
-                } else {
-                    renderList(filtered);
-                }
-            }
-            
-            updateBreadcrumbs();
-            updateStorage();
-        }
-
-        function renderGrid(items) {
-            const html = items.map(item => {
-                let iconClass = "fa-file text-gray-400";
-                let colorClass = "text-gray-500";
+            handle: async () => {
+                const hash = window.location.hash;
                 
-                if (item.isFolder) {
-                    iconClass = "fa-folder text-blue-500";
-                    colorClass = "text-blue-500";
-                } else if (item.type.startsWith('image')) iconClass = "fa-image text-purple-500";
-                else if (item.type.startsWith('video')) iconClass = "fa-film text-red-500";
-                else if (item.type.includes('pdf')) iconClass = "fa-file-pdf text-red-500";
-                else if (item.type.includes('text')) iconClass = "fa-file-lines text-slate-500";
-
-                // Thumbnail logic for images
-                let thumbnailHtml = `<i class="fa-solid ${iconClass} text-5xl mb-3"></i>`;
-                if (item.type && item.type.startsWith('image') && !item.isFolder) {
-                   const url = URL.createObjectURL(item.data);
-                   thumbnailHtml = `<img src="${url}" class="w-full h-32 object-cover rounded-lg mb-2" onload="URL.revokeObjectURL(this.src)">`;
+                if (!hash || hash === '#/') {
+                    window.location.hash = '#/folder/root';
+                    return;
                 }
 
-                return `
-                    <div onclick="handleItemClick('${item.id}', ${item.isFolder})" 
-                         class="bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer transition-all group relative h-48 justify-between">
-                        <button onclick="event.stopPropagation(); promptDelete('${item.id}')" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-full text-red-500 transition-opacity"><i class="fa-solid fa-trash"></i></button>
-                        <div class="w-full flex items-center justify-center flex-1 overflow-hidden">
-                           ${thumbnailHtml}
-                        </div>
-                        <div class="w-full">
-                            <p class="text-sm font-medium text-slate-700 truncate w-full">${item.name}</p>
-                            <p class="text-xs text-slate-400 mt-0.5">${item.isFolder ? 'Folder' : formatBytes(item.size)}</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            document.getElementById('fileArea').innerHTML = `<div class="folder-grid">${html}</div>`;
-        }
+                // Parse Hash
+                if (hash.startsWith('#/folder/')) {
+                    const id = hash.replace('#/folder/', '');
+                    await app.loadFolder(id);
+                    document.getElementById('previewModal').classList.add('hidden');
+                } else if (hash.startsWith('#/file/')) {
+                    const id = hash.replace('#/file/', '');
+                    // We need to know where the file "lives" to set the background
+                    // So we fetch the file first
+                    const file = await db.get(id);
+                    if (file) {
+                        // If we aren't already in the parent folder, load it behind the scenes?
+                        // Actually, let's just load the preview.
+                        // But to show breadcrumbs correctly, we need the parent.
+                        if (state.currentFolderId !== file.parentId) {
+                            await app.loadFolder(file.parentId); 
+                        }
+                        app.openPreview(file);
+                    } else {
+                        ui.toast('File not found', 'error');
+                        window.location.hash = `#/folder/${state.currentFolderId}`;
+                    }
+                }
+            },
 
-        function renderList(items) {
-            const html = `
-                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-500 border-b border-slate-200">
-                            <tr>
-                                <th class="px-4 py-3 font-medium">Name</th>
-                                <th class="px-4 py-3 font-medium">Size</th>
-                                <th class="px-4 py-3 font-medium text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            ${items.map(item => `
-                                <tr onclick="handleItemClick('${item.id}', ${item.isFolder})" class="hover:bg-slate-50 cursor-pointer">
-                                    <td class="px-4 py-3 flex items-center gap-3">
-                                        <i class="fa-solid ${item.isFolder ? 'fa-folder text-blue-500' : 'fa-file text-slate-400'}"></i>
-                                        <span class="truncate font-medium text-slate-700">${item.name}</span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-500">${item.isFolder ? '-' : formatBytes(item.size)}</td>
-                                    <td class="px-4 py-3 text-right">
-                                        <button onclick="event.stopPropagation(); promptDelete('${item.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="fa-solid fa-trash"></i></button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>`;
-            document.getElementById('fileArea').innerHTML = html;
-        }
+            navigate: (folderId) => {
+                window.location.hash = `#/folder/${folderId}`;
+            },
 
-        function updateBreadcrumbs() {
-            const container = document.getElementById('breadcrumbs');
-            container.innerHTML = folderChain.map((folder, index) => {
-                const isLast = index === folderChain.length - 1;
-                return `
-                    <span class="flex items-center">
-                        ${index > 0 ? '<i class="fa-solid fa-chevron-right text-xs mx-2 text-slate-300"></i>' : ''}
-                        <button onclick="navigateToBreadcrumb(${index})" class="${isLast ? 'font-bold text-slate-800' : 'text-slate-500 hover:text-blue-600'} px-1 rounded">
+            openFile: (fileId) => {
+                window.location.hash = `#/file/${fileId}`;
+            },
+
+            closePreview: () => {
+                // Go back to the folder URL
+                window.location.hash = `#/folder/${state.currentFolderId}`;
+            }
+        };
+
+        // --- APP LOGIC ---
+        const app = {
+            loadFolder: async (id) => {
+                state.currentFolderId = id;
+                ui.setLoading(true);
+
+                // 1. Get Folder Info & Breadcrumbs
+                if (id === 'root') {
+                    state.currentFolderData = { id: 'root', name: 'My Drive' };
+                    state.pathCache = [{ id: 'root', name: 'My Drive' }];
+                } else {
+                    const folder = await db.get(id);
+                    if (!folder) {
+                        ui.toast('Folder not found', 'error');
+                        router.navigate('root');
+                        return;
+                    }
+                    state.currentFolderData = folder;
+                    // Rebuild breadcrumbs
+                    state.pathCache = await db.buildPath(id);
+                }
+
+                // Update Title
+                document.title = `${state.currentFolderData.name} - LocalDrive`;
+
+                // 2. Fetch Content
+                const items = await db.getChildren(id);
+                state.files = items;
+
+                // 3. Update Storage Stats (async)
+                app.calcStorage();
+
+                ui.renderBreadcrumbs();
+                app.applySortAndRender();
+                ui.setLoading(false);
+            },
+
+            applySortAndRender: () => {
+                const sortKey = document.getElementById('sortSelect').value;
+                
+                state.files.sort((a, b) => {
+                    // Folders always first
+                    if (a.isFolder && !b.isFolder) return -1;
+                    if (!a.isFolder && b.isFolder) return 1;
+
+                    // Sort logic
+                    if (sortKey === 'size') return b.size - a.size; // Desc
+                    if (sortKey === 'date') return b.createdAt - a.createdAt; // Desc
+                    return a.name.localeCompare(b.name); // Asc
+                });
+
+                // Search Filter
+                const q = document.getElementById('searchInput').value.toLowerCase();
+                const filtered = state.files.filter(f => f.name.toLowerCase().includes(q));
+                
+                ui.renderFiles(filtered);
+            },
+
+            handleSort: (val) => {
+                state.sortBy = val;
+                app.applySortAndRender();
+            },
+
+            toggleView: (mode) => {
+                state.viewMode = mode;
+                
+                const btnGrid = document.getElementById('btnGrid');
+                const btnList = document.getElementById('btnList');
+                
+                if(mode === 'grid') {
+                    btnGrid.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnGrid.classList.remove('text-slate-500');
+                    btnList.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnList.classList.add('text-slate-500');
+                } else {
+                    btnList.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnList.classList.remove('text-slate-500');
+                    btnGrid.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnGrid.classList.add('text-slate-500');
+                }
+
+                app.applySortAndRender();
+            },
+
+            uploadFiles: async (fileList) => {
+                if (!fileList.length) return;
+                
+                let count = 0;
+                ui.toast(`Uploading ${fileList.length} files...`, 'info');
+
+                for (let file of fileList) {
+                    const newItem = {
+                        id: crypto.randomUUID(),
+                        parentId: state.currentFolderId,
+                        name: file.name,
+                        isFolder: false,
+                        type: file.type,
+                        size: file.size,
+                        createdAt: Date.now(),
+                        data: file
+                    };
+                    try {
+                        await db.add(newItem);
+                        count++;
+                    } catch(e) {
+                        console.error(e);
+                        ui.toast(`Failed to save ${file.name} (Quota?)`, 'error');
+                    }
+                }
+                
+                ui.toast(`Uploaded ${count} files`, 'success');
+                app.loadFolder(state.currentFolderId);
+            },
+
+            createFolder: async (name) => {
+                if (!name.trim()) return;
+                const folder = {
+                    id: crypto.randomUUID(),
+                    parentId: state.currentFolderId,
+                    name: name,
+                    isFolder: true,
+                    size: 0,
+                    createdAt: Date.now()
+                };
+                await db.add(folder);
+                ui.toast('Folder created', 'success');
+                app.loadFolder(state.currentFolderId);
+            },
+
+            deleteRecursive: async (id) => {
+                const item = await db.get(id);
+                if (!item) return;
+
+                if (item.isFolder) {
+                    const children = await db.getChildren(id);
+                    for (let c of children) await app.deleteRecursive(c.id);
+                }
+                await db.delete(id);
+            },
+
+            calcStorage: async () => {
+                // Rough estimate
+                const all = await db.getAll();
+                const used = all.reduce((acc, i) => acc + (i.size || 0), 0);
+                // Assume 500MB for visual purposes (Browsers vary wildly)
+                const total = 500 * 1024 * 1024; 
+                
+                const percent = Math.min((used / total) * 100, 100).toFixed(1);
+                
+                document.getElementById('storagePercent').innerText = `${percent}%`;
+                document.getElementById('storageText').innerText = utils.formatBytes(used);
+                document.getElementById('storageBar').style.width = `${percent}%`;
+                
+                if (percent > 80) document.getElementById('storageBar').classList.replace('bg-primary-500', 'bg-red-500');
+            },
+
+            openPreview: (file) => {
+                const modal = document.getElementById('previewModal');
+                const content = document.getElementById('previewContent');
+                
+                document.getElementById('previewTitle').innerText = file.name;
+                document.getElementById('previewMeta').innerText = `${utils.formatBytes(file.size)} • ${new Date(file.createdAt).toLocaleString()}`;
+                document.title = `${file.name} - Preview`;
+
+                // Icon
+                document.getElementById('previewIcon').innerHTML = `<i class="${utils.getIcon(file, false)} text-xl text-slate-400"></i>`;
+
+                // Download
+                const url = URL.createObjectURL(file.data);
+                const dlBtn = document.getElementById('downloadBtn');
+                dlBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = file.name;
+                    a.click();
+                };
+
+                // Content
+                content.innerHTML = '<div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>';
+                
+                modal.classList.remove('hidden');
+
+                setTimeout(() => {
+                    if (file.type.startsWith('image/')) {
+                        content.innerHTML = `<img src="${url}" class="max-w-full max-h-[85vh] rounded shadow-2xl object-contain">`;
+                    } else if (file.type.startsWith('video/')) {
+                        content.innerHTML = `<video src="${url}" controls class="max-w-full max-h-[85vh] rounded shadow-2xl"></video>`;
+                    } else if (file.type.startsWith('audio/')) {
+                        content.innerHTML = `
+                            <div class="bg-slate-800 p-12 rounded-3xl flex flex-col items-center gap-8 shadow-2xl border border-slate-700">
+                                <div class="w-24 h-24 bg-gradient-to-tr from-pink-500 to-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                                    <i class="fa-solid fa-music text-4xl text-white"></i>
+                                </div>
+                                <audio src="${url}" controls class="w-64"></audio>
+                            </div>`;
+                    } else if (file.name.match(/\.(txt|md|js|json|css|html|xml|log)$/i) || file.type.startsWith('text/')) {
+                        const r = new FileReader();
+                        r.onload = e => {
+                            content.innerHTML = `<div class="bg-white text-slate-800 p-8 rounded-lg shadow-2xl max-w-4xl w-full h-[80vh] overflow-auto font-mono text-sm leading-relaxed whitespace-pre-wrap">${e.target.result.replace(/</g, "&lt;")}</div>`;
+                        };
+                        r.readAsText(file.data);
+                    } else {
+                        content.innerHTML = `
+                            <div class="text-center text-white/50">
+                                <i class="fa-solid fa-file-circle-question text-6xl mb-4"></i>
+                                <p class="text-xl">Preview not available</p>
+                                <button onclick="document.getElementById('downloadBtn').click()" class="mt-4 text-primary-300 hover:text-white underline">Download File</button>
+                            </div>`;
+                    }
+                }, 100);
+            }
+        };
+
+        // --- UI & HELPERS ---
+        const ui = {
+            renderFiles: (items) => {
+                const area = document.getElementById('fileArea');
+                
+                if (items.length === 0) {
+                    area.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-slate-300 pb-20">
+                            <div class="bg-slate-100 p-6 rounded-full mb-4">
+                                <i class="fa-solid fa-folder-open text-4xl text-slate-300"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-slate-600">Empty Folder</h3>
+                            <p class="text-sm">Drag files here or create a new folder.</p>
+                        </div>`;
+                    return;
+                }
+
+                if (state.viewMode === 'grid') {
+                    area.innerHTML = `<div class="folder-grid pb-20">
+                        ${items.map(item => `
+                            <div oncontextmenu="utils.handleContext(event, '${item.id}')" 
+                                 onclick="utils.handleItemClick('${item.id}', ${item.isFolder})"
+                                 class="group relative bg-white border border-slate-200 hover:border-primary-400 hover:shadow-lg hover:shadow-primary-100 rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer transition-all aspect-square justify-between select-none">
+                                
+                                <div class="w-full flex-1 flex items-center justify-center overflow-hidden mb-2">
+                                    ${utils.getThumbnail(item)}
+                                </div>
+                                
+                                <div class="w-full px-1">
+                                    <p class="text-xs font-semibold text-slate-700 truncate w-full" title="${item.name}">${item.name}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">${item.isFolder ? 'Folder' : utils.formatBytes(item.size)}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                } else {
+                    area.innerHTML = `
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-20">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 border-b border-slate-100 text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-6 py-3 font-medium">Name</th>
+                                        <th class="px-6 py-3 font-medium hidden sm:table-cell">Date</th>
+                                        <th class="px-6 py-3 font-medium hidden md:table-cell">Size</th>
+                                        <th class="px-6 py-3 text-right"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${items.map(item => `
+                                        <tr oncontextmenu="utils.handleContext(event, '${item.id}')"
+                                            onclick="utils.handleItemClick('${item.id}', ${item.isFolder})" 
+                                            class="hover:bg-primary-50 cursor-pointer transition-colors group">
+                                            <td class="px-6 py-3 flex items-center gap-3">
+                                                <div class="w-8 flex justify-center"><i class="${utils.getIcon(item, true)} text-lg"></i></div>
+                                                <span class="font-medium text-slate-700 truncate max-w-[150px] sm:max-w-xs">${item.name}</span>
+                                            </td>
+                                            <td class="px-6 py-3 text-slate-500 hidden sm:table-cell text-xs">${new Date(item.createdAt).toLocaleDateString()}</td>
+                                            <td class="px-6 py-3 text-slate-500 hidden md:table-cell text-xs font-mono">${item.isFolder ? '--' : utils.formatBytes(item.size)}</td>
+                                            <td class="px-6 py-3 text-right">
+                                                <button onclick="event.stopPropagation(); utils.handleContext(event, '${item.id}')" class="text-slate-300 hover:text-slate-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }
+            },
+
+            renderBreadcrumbs: () => {
+                const el = document.getElementById('breadcrumbs');
+                let html = '';
+                
+                state.pathCache.forEach((folder, index) => {
+                    const isLast = index === state.pathCache.length - 1;
+                    if (index > 0) html += `<i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-300"></i>`;
+                    
+                    html += `
+                        <button onclick="router.navigate('${folder.id}')" 
+                                class="${isLast ? 'font-bold text-slate-800 pointer-events-none' : 'text-slate-500 hover:text-primary-600 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors'}">
                             ${folder.name}
                         </button>
-                    </span>
+                    `;
+                });
+                el.innerHTML = html;
+                // Scroll to end
+                el.scrollLeft = el.scrollWidth;
+            },
+
+            setLoading: (bool) => {
+                const area = document.getElementById('fileArea');
+                if (bool) {
+                    area.innerHTML = '<div class="absolute inset-0 flex items-center justify-center bg-white/50 z-10"><div class="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div></div>';
+                }
+            },
+
+            toast: (msg, type = 'info') => {
+                const c = document.getElementById('toastContainer');
+                const div = document.createElement('div');
+                const colors = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-slate-800';
+                
+                div.className = `${colors} text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium toast backdrop-blur-md bg-opacity-90`;
+                div.innerHTML = `
+                    <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+                    ${msg}
                 `;
-            }).join('');
-        }
-
-        async function updateStorage() {
-            const allFiles = await getAllFilesForStorage();
-            const totalBytes = allFiles.reduce((acc, file) => acc + (file.size || 0), 0);
-            const quota = 1024 * 1024 * 1024; // Assumed 1GB soft limit visualization
-            
-            const percent = Math.min((totalBytes / quota) * 100, 100);
-            document.getElementById('storageBar').style.width = `${percent}%`;
-            document.getElementById('storageText').innerText = formatBytes(totalBytes) + ' used';
-        }
-
-        // --- ACTIONS ---
-
-        function handleItemClick(id, isFolder) {
-            const item = currentFiles.find(i => i.id === id);
-            if (isFolder) {
-                folderChain.push({ id: item.id, name: item.name });
-                currentFolderId = item.id;
-                loadFiles();
-            } else {
-                openPreview(item);
+                c.appendChild(div);
+                setTimeout(() => {
+                    div.style.opacity = '0';
+                    div.style.transform = 'translateY(10px)';
+                    setTimeout(() => div.remove(), 300);
+                }, 3000);
             }
-        }
+        };
 
-        function navigateTo(folderId) {
-            if (folderId === 'root') {
-                folderChain = [{ id: 'root', name: 'My Drive' }];
-                currentFolderId = 'root';
-            }
-            loadFiles();
-        }
+        const utils = {
+            formatBytes: (bytes) => {
+                if (!+bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+            },
 
-        function navigateToBreadcrumb(index) {
-            folderChain = folderChain.slice(0, index + 1);
-            currentFolderId = folderChain[folderChain.length - 1].id;
-            loadFiles();
-        }
+            getIcon: (item, color) => {
+                if (item.isFolder) return color ? "fa-solid fa-folder text-blue-500" : "fa-solid fa-folder";
+                const t = item.type;
+                if (t.startsWith('image')) return color ? "fa-solid fa-image text-purple-500" : "fa-solid fa-image";
+                if (t.startsWith('video')) return color ? "fa-solid fa-film text-red-500" : "fa-solid fa-film";
+                if (t.startsWith('audio')) return color ? "fa-solid fa-music text-pink-500" : "fa-solid fa-music";
+                if (t.includes('pdf')) return color ? "fa-solid fa-file-pdf text-red-500" : "fa-solid fa-file-pdf";
+                if (t.includes('text') || item.name.includes('.md') || item.name.includes('.js')) return color ? "fa-solid fa-file-lines text-slate-500" : "fa-solid fa-file-lines";
+                return color ? "fa-solid fa-file text-slate-400" : "fa-solid fa-file";
+            },
 
-        async function handleFileUpload(e) {
-            const files = e.target.files;
-            if (!files.length) return;
-            
-            // Visual feedback could go here
-            for (let file of files) {
-                const newFile = {
-                    id: crypto.randomUUID(),
-                    parentId: currentFolderId,
-                    name: file.name,
-                    isFolder: false,
-                    type: file.type,
-                    size: file.size,
-                    createdAt: Date.now(),
-                    data: file
+            getThumbnail: (item) => {
+                if (item.isFolder) return `<i class="fa-solid fa-folder text-5xl text-blue-500 drop-shadow-sm"></i>`;
+                if (item.type.startsWith('image')) {
+                    const url = URL.createObjectURL(item.data);
+                    // Revoke URL after load to save memory? In a grid this causes flickering if refreshed.
+                    // Kept simple for now.
+                    return `<img src="${url}" class="w-full h-full object-cover rounded-lg shadow-sm" loading="lazy">`;
+                }
+                return `<i class="${utils.getIcon(item, true)} text-5xl opacity-80"></i>`;
+            },
+
+            handleItemClick: (id, isFolder) => {
+                if (isFolder) router.navigate(id);
+                else router.openFile(id);
+            },
+
+            handleContext: (e, id) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                state.contextItem = state.files.find(f => f.id === id);
+                if (!state.contextItem) return;
+
+                const menu = document.getElementById('contextMenu');
+                document.getElementById('ctxTitle').innerText = state.contextItem.name;
+                
+                // Position logic to keep inside viewport
+                let x = e.clientX;
+                let y = e.clientY;
+                if (x + 200 > window.innerWidth) x = window.innerWidth - 200;
+                if (y + 200 > window.innerHeight) y = window.innerHeight - 200;
+
+                menu.style.left = `${x}px`;
+                menu.style.top = `${y}px`;
+                menu.classList.remove('hidden');
+
+                // Close on click elsewhere
+                const close = () => {
+                    menu.classList.add('hidden');
+                    document.removeEventListener('click', close);
                 };
-                await addFileToDB(newFile);
+                document.addEventListener('click', close);
             }
-            
-            // Reset input
-            e.target.value = '';
-            loadFiles();
-        }
+        };
 
-        function openFolderModal() {
-            document.getElementById('folderModal').classList.remove('hidden');
-            document.getElementById('folderNameInput').focus();
-        }
-
-        function closeFolderModal() {
-            document.getElementById('folderModal').classList.add('hidden');
-            document.getElementById('folderNameInput').value = '';
-        }
-
-        async function createFolder() {
-            const name = document.getElementById('folderNameInput').value.trim();
-            if (!name) return;
-
-            const newFolder = {
-                id: crypto.randomUUID(),
-                parentId: currentFolderId,
-                name: name,
-                isFolder: true,
-                size: 0,
-                createdAt: Date.now()
-            };
-
-            await addFileToDB(newFolder);
-            closeFolderModal();
-            loadFiles();
-        }
-
-        async function promptDelete(id) {
-            if(confirm('Delete this item permanently?')) {
-                await deleteRecursive(id);
-                loadFiles();
+        const modals = {
+            openFolder: () => {
+                const m = document.getElementById('folderModal');
+                m.classList.remove('hidden');
+                setTimeout(() => m.classList.remove('opacity-0'), 10);
+                document.getElementById('folderNameInput').focus();
+            },
+            closeFolder: () => {
+                const m = document.getElementById('folderModal');
+                m.classList.add('opacity-0');
+                setTimeout(() => m.classList.add('hidden'), 200);
+            },
+            submitFolder: async () => {
+                const input = document.getElementById('folderNameInput');
+                await app.createFolder(input.value);
+                input.value = '';
+                modals.closeFolder();
+            },
+            submitRename: async () => {
+                const input = document.getElementById('renameInput');
+                const newName = input.value.trim();
+                if (newName && state.contextItem) {
+                    state.contextItem.name = newName;
+                    await db.update(state.contextItem);
+                    document.getElementById('renameModal').classList.add('hidden');
+                    app.loadFolder(state.currentFolderId);
+                    ui.toast('Renamed successfully', 'success');
+                }
             }
-        }
+        };
 
-        function toggleView() {
-            viewMode = viewMode === 'grid' ? 'list' : 'grid';
-            document.getElementById('viewIcon').className = `fa-solid ${viewMode === 'grid' ? 'fa-list' : 'fa-border-all'}`;
-            loadFiles();
-        }
-
-        // --- PREVIEW SYSTEM ---
-        function openPreview(item) {
-            const modal = document.getElementById('previewModal');
-            const content = document.getElementById('previewContent');
-            const title = document.getElementById('previewTitle');
-            const dlBtn = document.getElementById('downloadBtn');
-            
-            modal.classList.remove('hidden');
-            title.innerText = item.name;
-            content.innerHTML = '<div class="loader"></div>';
-
-            // Download Handler
-            const url = URL.createObjectURL(item.data);
-            dlBtn.onclick = () => {
+        const actions = {
+            open: () => {
+                if (state.contextItem.isFolder) router.navigate(state.contextItem.id);
+                else router.openFile(state.contextItem.id);
+            },
+            rename: () => {
+                document.getElementById('renameModal').classList.remove('hidden');
+                document.getElementById('renameInput').value = state.contextItem.name;
+                document.getElementById('renameInput').focus();
+            },
+            delete: async () => {
+                if (confirm(`Delete "${state.contextItem.name}"? This cannot be undone.`)) {
+                    await app.deleteRecursive(state.contextItem.id);
+                    app.loadFolder(state.currentFolderId);
+                    ui.toast('Item deleted', 'success');
+                }
+            },
+            download: () => {
+                if (state.contextItem.isFolder) {
+                    ui.toast('Cannot download folders yet', 'error');
+                    return;
+                }
+                const url = URL.createObjectURL(state.contextItem.data);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = item.name;
+                a.download = state.contextItem.name;
                 a.click();
-            };
-
-            // Preview Logic
-            if (item.type.startsWith('image/')) {
-                content.innerHTML = `<img src="${url}" class="max-h-full max-w-full rounded shadow-lg">`;
-            } else if (item.type.startsWith('video/')) {
-                content.innerHTML = `<video src="${url}" controls class="max-h-full max-w-full rounded shadow-lg"></video>`;
-            } else if (item.type.startsWith('audio/')) {
-                content.innerHTML = `
-                    <div class="bg-slate-800 p-10 rounded-2xl flex flex-col items-center gap-4">
-                        <i class="fa-solid fa-music text-6xl text-pink-500 animate-pulse"></i>
-                        <audio src="${url}" controls></audio>
-                    </div>`;
-            } else if (item.type.startsWith('text/') || item.name.endsWith('.txt') || item.name.endsWith('.md') || item.name.endsWith('.js') || item.name.endsWith('.html')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    content.innerHTML = `<pre class="bg-white text-slate-800 p-6 rounded-lg overflow-auto w-full max-w-3xl h-full text-sm font-mono whitespace-pre-wrap">${e.target.result.replace(/</g, "&lt;")}</pre>`;
-                };
-                reader.readAsText(item.data);
-            } else {
-                content.innerHTML = `
-                    <div class="text-center text-slate-400">
-                        <i class="fa-solid fa-file-circle-question text-6xl mb-4"></i>
-                        <p class="text-xl">Preview not available</p>
-                        <p class="text-sm mt-2">Please download the file to view it.</p>
-                    </div>`;
             }
-        }
+        };
 
-        function closePreview() {
-            document.getElementById('previewModal').classList.add('hidden');
-        }
-
-        // --- DRAG AND DROP ---
-        const dropZone = document.getElementById('dropZone');
+        // --- GLOBAL EVENTS ---
+        
+        // Search
+        document.getElementById('searchInput').addEventListener('input', app.applySortAndRender);
+        
+        // Drag & Drop
+        const dz = document.getElementById('dropZone');
         let dragCounter = 0;
-
-        window.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            dragCounter++;
-            dropZone.classList.remove('hidden');
-        });
-
-        window.addEventListener('dragleave', (e) => {
-            dragCounter--;
-            if (dragCounter === 0) dropZone.classList.add('hidden');
-        });
-
-        window.addEventListener('dragover', (e) => e.preventDefault());
-
-        window.addEventListener('drop', async (e) => {
+        window.addEventListener('dragenter', e => { e.preventDefault(); dragCounter++; dz.classList.remove('hidden'); });
+        window.addEventListener('dragleave', e => { e.preventDefault(); dragCounter--; if(dragCounter === 0) dz.classList.add('hidden'); });
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', async e => {
             e.preventDefault();
             dragCounter = 0;
-            dropZone.classList.add('hidden');
-            
-            if (e.dataTransfer.files.length) {
-                await handleFileUpload({ target: { files: e.dataTransfer.files } });
-            }
+            dz.classList.add('hidden');
+            if (e.dataTransfer.files.length) await app.uploadFiles(e.dataTransfer.files);
         });
 
-        // Search Listener
-        document.getElementById('searchInput').addEventListener('input', loadFiles);
-
-        // File Input Listener
-        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-
-        // Init
-        initDB().then(() => {
-            loadFiles();
+        // File Input
+        document.getElementById('fileInput').addEventListener('change', e => {
+            app.uploadFiles(e.target.files);
+            e.target.value = '';
         });
+
+        function triggerUpload() { document.getElementById('fileInput').click(); }
+
+        // INIT
+        (async () => {
+            await db.init();
+            router.init();
+        })();
 
     </script>
 </body>
