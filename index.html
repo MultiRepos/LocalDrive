@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LocalDrive</title>
     
     <!-- Tailwind CSS -->
@@ -14,24 +14,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Tailwind Config -->
+    <!-- Tailwind Configuration for Custom Colors/Fonts -->
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554' },
-                        dark: { 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.15s ease-out forwards',
-                        'zoom-in': 'zoomIn 0.1s ease-out forwards'
-                    },
-                    keyframes: {
-                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-                        zoomIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } }
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
                     }
                 }
             }
@@ -39,421 +29,610 @@
     </script>
 
     <style>
-        /* UI Polish */
-        body { -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
-        
-        /* Scrollbar */
+        /* Custom UI Tweaks */
+        body { -webkit-font-smoothing: antialiased; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Grid Layout */
         .folder-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
             gap: 1rem;
         }
-        @media (min-width: 640px) { .folder-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1.5rem; } }
 
-        /* Selection styling */
-        .selected-item { 
-            background-color: #eff6ff !important;
-            box-shadow: inset 0 0 0 1px #3b82f6, 0 4px 6px -1px rgba(59, 130, 246, 0.1);
-        }
-        .dark .selected-item {
-            background-color: #1e3a8a !important;
-            box-shadow: inset 0 0 0 1px #60a5fa;
+        /* Context Menu */
+        #contextMenu {
+            animation: fadeIn 0.1s ease-out;
         }
 
-        /* Context Menu positioning */
-        #contextMenu { z-index: 100; min-width: 200px; }
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .toast { animation: slideUp 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-dark-950 dark:text-slate-100 h-screen flex overflow-hidden selection:bg-primary-500 selection:text-white transition-colors duration-300" oncontextmenu="return false;">
-
-    <!-- MOBILE SIDEBAR OVERLAY -->
-    <div id="sidebarOverlay" onclick="ui.toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden selection:bg-primary-100 selection:text-primary-700">
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-72 bg-white dark:bg-dark-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform z-40 duration-300 shadow-xl md:shadow-none">
-        <!-- Brand -->
-        <div class="p-6 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
-                    <i class="fa-solid fa-cloud text-lg"></i>
-                </div>
-                <h1 class="text-lg font-bold tracking-tight">LocalDrive</h1>
+    <aside class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex shrink-0 z-20">
+        <div class="p-6 flex items-center gap-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                <i class="fa-solid fa-cloud text-lg"></i>
             </div>
+            <h1 class="text-xl font-bold tracking-tight text-slate-800">LocalDrive</h1>
         </div>
 
-        <!-- Create Button -->
         <div class="px-5 pb-6">
             <div class="relative group">
-                <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 shadow-sm rounded-xl cursor-pointer transition-all active:scale-95 group">
-                    <i class="fa-solid fa-plus mr-2 text-primary-500 group-hover:rotate-90 transition-transform"></i>
-                    <span class="font-semibold text-sm">New File</span>
+                <button onclick="triggerUpload()" class="flex items-center justify-center w-full py-3.5 px-4 bg-primary-600 text-white shadow-lg shadow-blue-200 rounded-xl cursor-pointer hover:bg-primary-700 hover:shadow-xl transition-all active:scale-95">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    <span class="font-semibold">Upload File</span>
                 </button>
                 <input type="file" id="fileInput" multiple class="hidden">
             </div>
+            <button onclick="modals.openFolder()" class="mt-3 w-full py-2.5 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center transition-colors">
+                <i class="fa-regular fa-folder mr-2"></i> New Folder
+            </button>
         </div>
 
-        <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto px-3 space-y-1">
-            <a href="#/folder/root" id="nav-root" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <i class="fa-solid fa-hard-drive w-6 text-slate-400"></i> My Drive
+        <nav class="flex-1 overflow-y-auto px-4 space-y-1">
+            <a href="#/folder/root" class="flex items-center px-4 py-2.5 text-sm font-medium bg-blue-50 text-primary-700 rounded-lg group">
+                <i class="fa-solid fa-house w-5 group-hover:scale-110 transition-transform"></i> My Drive
             </a>
-            <a href="#/starred" id="nav-starred" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <i class="fa-solid fa-star w-6 text-slate-400"></i> Starred
-            </a>
-            <div class="pt-4 pb-2 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Storage</div>
+            <div class="pt-4 pb-2 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Storage</div>
             <div class="px-4">
                 <div class="flex justify-between text-xs mb-1.5 font-medium">
-                    <span class="text-slate-600 dark:text-slate-400" id="storagePercent">0%</span>
-                    <span class="text-slate-400 dark:text-slate-500" id="storageUsed">0 GB</span>
+                    <span class="text-slate-600" id="storagePercent">0%</span>
+                    <span class="text-slate-400" id="storageText">Calculating...</span>
                 </div>
-                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                    <div id="storageBar" class="bg-primary-500 h-1.5 rounded-full transition-all duration-1000 w-0"></div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div id="storageBar" class="bg-primary-500 h-2 rounded-full transition-all duration-1000 w-0"></div>
                 </div>
+                <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">Files are stored in your browser's IndexedDB. Do not clear browser data.</p>
             </div>
         </nav>
-        
-        <!-- Bottom Controls -->
-        <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <button onclick="ui.toggleTheme()" class="w-9 h-9 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors" title="Toggle Theme">
-                <i class="fa-solid fa-moon dark:hidden"></i>
-                <i class="fa-solid fa-sun hidden dark:block text-yellow-400"></i>
-            </button>
-            <span class="text-[10px] text-slate-400">v2.1 Local</span>
-        </div>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50/50 dark:bg-dark-950 transition-colors" onclick="ctx.close()" oncontextmenu="ctx.bg(event)">
+    <main class="flex-1 flex flex-col h-full relative min-w-0 bg-slate-50/50">
         
-        <!-- Header -->
-        <header class="h-16 bg-white/80 dark:bg-dark-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 shrink-0 z-10 sticky top-0">
+        <!-- Top Bar -->
+        <header class="h-16 bg-white/80 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-10 sticky top-0">
+            <!-- Breadcrumbs -->
             <div class="flex items-center gap-3 overflow-hidden flex-1 mr-4">
-                <button class="md:hidden text-slate-500 p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg" onclick="ui.toggleSidebar()">
-                    <i class="fa-solid fa-bars text-lg"></i>
+                <button class="md:hidden text-slate-500 p-2 -ml-2 hover:bg-slate-100 rounded-lg" onclick="router.navigate('root')">
+                    <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <div id="breadcrumbs" class="flex items-center text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap overflow-x-auto no-scrollbar mask-linear-fade px-1">
-                    <!-- JS Injected -->
+                <div id="breadcrumbs" class="flex items-center text-sm font-medium text-slate-600 whitespace-nowrap overflow-x-auto no-scrollbar mask-linear-fade">
+                    <!-- Injected by JS -->
                 </div>
             </div>
 
-            <!-- Header Actions -->
+            <!-- Controls -->
             <div class="flex items-center gap-2 lg:gap-3 shrink-0">
                 <div class="relative hidden sm:block">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" id="searchInput" placeholder="Search" class="bg-slate-100 dark:bg-slate-800 border-transparent hover:border-slate-300 dark:hover:border-slate-600 rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary-500 outline-none w-48 transition-all dark:text-white placeholder-slate-500">
+                    <input type="text" id="searchInput" placeholder="Search" class="bg-slate-100 border-transparent hover:bg-slate-50 border hover:border-slate-300 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none w-48 transition-all">
                 </div>
-                <div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <button onclick="app.toggleView('grid')" id="btnGrid" class="p-1.5 rounded-md shadow-sm bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 transition-all"><i class="fa-solid fa-border-all text-xs"></i></button>
-                    <button onclick="app.toggleView('list')" id="btnList" class="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"><i class="fa-solid fa-list text-xs"></i></button>
+                
+                <div class="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
+                <select id="sortSelect" onchange="app.handleSort(this.value)" class="bg-transparent text-sm font-medium text-slate-600 focus:outline-none cursor-pointer hover:text-primary-600 hidden sm:block">
+                    <option value="name">Name</option>
+                    <option value="date">Date</option>
+                    <option value="size">Size</option>
+                </select>
+
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button onclick="app.toggleView('grid')" id="btnGrid" class="p-1.5 rounded shadow-sm bg-white text-primary-600 transition-all"><i class="fa-solid fa-border-all text-sm"></i></button>
+                    <button onclick="app.toggleView('list')" id="btnList" class="p-1.5 rounded text-slate-500 hover:text-slate-700 transition-all"><i class="fa-solid fa-list text-sm"></i></button>
                 </div>
             </div>
         </header>
 
         <!-- Drop Zone -->
-        <div id="dropZone" class="hidden absolute inset-0 bg-primary-50/90 dark:bg-primary-900/90 z-50 flex flex-col items-center justify-center border-4 border-primary-400 border-dashed m-4 rounded-3xl backdrop-blur-sm transition-all animate-fade-in">
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-full shadow-xl mb-6 animate-bounce">
+        <div id="dropZone" class="hidden absolute inset-0 bg-primary-50/90 z-50 flex flex-col items-center justify-center border-4 border-primary-400 border-dashed m-4 rounded-3xl backdrop-blur-sm transition-all">
+            <div class="bg-white p-6 rounded-full shadow-xl mb-6 animate-bounce">
                 <i class="fa-solid fa-cloud-arrow-up text-5xl text-primary-500"></i>
             </div>
-            <h2 class="text-3xl font-bold text-primary-800 dark:text-white">Drop files here</h2>
+            <h2 class="text-3xl font-bold text-primary-800">Drop files here</h2>
+            <p class="text-primary-600 mt-2">to upload them to this folder</p>
         </div>
 
-        <!-- Files -->
-        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative scroll-smooth outline-none" tabindex="0">
-            <!-- JS Injected -->
+        <!-- File List Area -->
+        <div id="fileArea" class="flex-1 overflow-y-auto p-4 lg:p-6 relative scroll-smooth">
+            <!-- Content injected here -->
         </div>
 
     </main>
 
-    <!-- CONTEXT MENU -->
-    <div id="contextMenu" class="fixed hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 py-1.5 overflow-hidden animate-zoom-in text-sm font-medium text-slate-700 dark:text-slate-200" onclick="ctx.close()">
-        <!-- JS Injected -->
+    <!-- Context Menu -->
+    <div id="contextMenu" class="fixed hidden bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 w-48 z-[60] text-sm text-slate-700 font-medium transform origin-top-left">
+        <div class="px-4 py-2 border-b border-slate-50 text-xs text-slate-400 uppercase tracking-wider" id="ctxTitle">Item</div>
+        <button onclick="actions.open()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-expand w-6 opacity-70"></i> Open</button>
+        <button onclick="actions.rename()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-pen w-6 opacity-70"></i> Rename</button>
+        <button onclick="actions.download()" class="w-full text-left px-4 py-2 hover:bg-primary-50 hover:text-primary-600 flex items-center"><i class="fa-solid fa-download w-6 opacity-70"></i> Download</button>
+        <div class="h-px bg-slate-100 my-1"></div>
+        <button onclick="actions.delete()" class="w-full text-left px-4 py-2 hover:bg-red-50 hover:text-red-600 flex items-center"><i class="fa-solid fa-trash w-6 opacity-70"></i> Delete</button>
     </div>
 
-    <!-- MODALS -->
+    <!-- Modals -->
     
-    <!-- New Folder -->
-    <div id="folderModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity animate-fade-in">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800">
-            <h3 class="text-lg font-bold mb-4 dark:text-white">New Folder</h3>
-            <input type="text" id="folderNameInput" placeholder="Folder Name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white" onkeydown="if(event.key === 'Enter') modals.submitFolder()">
+    <!-- New Folder Modal -->
+    <div id="folderModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform">
+            <h3 class="text-lg font-bold mb-4 text-slate-800">Create New Folder</h3>
+            <input type="text" id="folderNameInput" placeholder="My New Folder" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" onkeydown="if(event.key === 'Enter') modals.submitFolder()">
             <div class="flex justify-end gap-3">
-                <button onclick="modals.close('folderModal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                <button onclick="modals.submitFolder()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-lg shadow-primary-500/20">Create</button>
+                <button onclick="modals.closeFolder()" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl font-medium transition-colors">Cancel</button>
+                <button onclick="modals.submitFolder()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg shadow-blue-200 transition-all active:scale-95">Create Folder</button>
             </div>
         </div>
     </div>
 
-    <!-- Rename -->
-    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800">
-            <h3 class="text-lg font-bold mb-4 dark:text-white">Rename</h3>
-            <input type="text" id="renameInput" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white" onkeydown="if(event.key === 'Enter') modals.submitRename()">
+    <!-- Rename Modal -->
+    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 class="text-lg font-bold mb-4 text-slate-800">Rename Item</h3>
+            <input type="text" id="renameInput" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-primary-500" onkeydown="if(event.key === 'Enter') modals.submitRename()">
             <div class="flex justify-end gap-3">
-                <button onclick="modals.close('renameModal')" class="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
-                <button onclick="modals.submitRename()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-lg">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Properties Modal -->
-    <div id="propsModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xs p-6 border border-slate-100 dark:border-slate-800">
-            <h3 class="text-lg font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-primary-500"></i> Properties</h3>
-            <div id="propsContent" class="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                <!-- Injected -->
-            </div>
-            <div class="mt-6 flex justify-end">
-                <button onclick="modals.close('propsModal')" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                <button onclick="document.getElementById('renameModal').classList.add('hidden')" class="px-5 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl font-medium">Cancel</button>
+                <button onclick="modals.submitRename()" class="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg">Save</button>
             </div>
         </div>
     </div>
 
     <!-- Preview Modal -->
-    <div id="previewModal" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col backdrop-blur-xl animate-fade-in">
-        <div class="flex justify-between items-center px-4 py-3 bg-white/5 border-b border-white/10 text-white">
-            <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-8 h-8 bg-slate-800 rounded flex items-center justify-center" id="previewIcon"></div>
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/95 z-50 flex flex-col backdrop-blur-md">
+        <div class="flex justify-between items-center px-6 py-4 text-white bg-black/20 shrink-0">
+            <div class="flex items-center gap-4 overflow-hidden">
+                <div class="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center shrink-0" id="previewIcon">
+                    <!-- Icon -->
+                </div>
                 <div class="min-w-0">
-                    <h3 id="previewTitle" class="font-bold truncate">Filename.jpg</h3>
-                    <p id="previewMeta" class="text-xs text-slate-400 opacity-70">2.4 MB</p>
+                    <h3 id="previewTitle" class="font-bold text-lg truncate">Filename.jpg</h3>
+                    <p id="previewMeta" class="text-xs text-slate-400">2.4 MB • Today</p>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button id="saveTextBtn" onclick="actions.saveTextFile()" class="hidden px-3 py-1.5 bg-primary-600 text-xs font-bold rounded hover:bg-primary-500 mr-2">Save</button>
-                <button id="downloadBtn" class="p-2 hover:bg-white/10 rounded-full transition-colors"><i class="fa-solid fa-download"></i></button>
-                <button onclick="router.closePreview()" class="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button id="downloadBtn" class="p-3 hover:bg-white/10 rounded-full transition-colors" title="Download"><i class="fa-solid fa-download text-lg"></i></button>
+                <button onclick="router.closePreview()" class="p-3 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors" title="Close"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
         </div>
-        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 overflow-auto"></div>
+        <div id="previewContent" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-auto">
+            <!-- Content injected here -->
+        </div>
     </div>
 
-    <!-- Toast -->
-    <div id="toastContainer" class="fixed bottom-6 right-6 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- JAVASCRIPT -->
+    <!-- LOGIC -->
     <script>
-        // CONFIG
-        const DB_NAME = 'LocalDrive_V3';
+        // --- CONSTANTS & STATE ---
+        const DB_NAME = 'LocalDriveDB';
         const DB_VER = 1;
         const STORE = 'files';
-
-        // STATE
+        
         const state = {
             db: null,
             currentFolderId: 'root',
-            currentFolderData: null,
-            viewMode: localStorage.getItem('viewMode') || 'grid',
-            sortBy: 'name', sortDesc: false,
+            currentFolderData: null, // Holds the actual folder object for title
+            viewMode: 'grid', // 'grid' | 'list'
+            sortBy: 'name', // 'name' | 'date' | 'size'
+            contextItem: null, // Item currently right-clicked
             files: [],
-            pathCache: [],
-            selection: new Set(),
-            clipboard: null, // { op: 'cut'|'copy', items: [] }
-            isStarredView: false,
-            darkMode: localStorage.getItem('theme') === 'dark'
+            pathCache: [] // Array of folder objects for breadcrumbs
         };
 
-        // DATABASE WRAPPER
+        // --- DATABASE LAYER ---
         const db = {
-            init: () => new Promise((res, rej) => {
-                const r = indexedDB.open(DB_NAME, DB_VER);
-                r.onupgradeneeded = e => {
+            init: () => new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VER);
+                req.onupgradeneeded = e => {
                     const d = e.target.result;
-                    if(!d.objectStoreNames.contains(STORE)) {
-                        const s = d.createObjectStore(STORE, {keyPath:'id'});
-                        s.createIndex('parentId', 'parentId', {unique:false});
+                    if (!d.objectStoreNames.contains(STORE)) {
+                        const s = d.createObjectStore(STORE, { keyPath: 'id' });
+                        s.createIndex('parentId', 'parentId', { unique: false });
                     }
                 };
-                r.onsuccess = e => { state.db = e.target.result; res(); };
-                r.onerror = e => rej(e);
+                req.onsuccess = e => { state.db = e.target.result; resolve(); };
+                req.onerror = e => reject(e);
             }),
-            tx: (mode, fn) => new Promise((res, rej) => {
-                const t = state.db.transaction([STORE], mode);
-                const s = t.objectStore(STORE);
-                const r = fn(s);
-                r.onsuccess = () => res(r.result);
-                r.onerror = () => rej(r.error);
+
+            add: item => new Promise((resolve, reject) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).add(item);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject();
             }),
-            add: i => db.tx('readwrite', s => s.add(i)),
-            put: i => db.tx('readwrite', s => s.put(i)),
-            del: id => db.tx('readwrite', s => s.delete(id)),
-            get: id => db.tx('readonly', s => s.get(id)),
-            getAll: () => db.tx('readonly', s => s.getAll()),
-            getByParent: pid => new Promise(res => {
-                const t = state.db.transaction([STORE], 'readonly');
-                const idx = t.objectStore(STORE).index('parentId');
-                const r = idx.getAll(pid);
-                r.onsuccess = () => res(r.result);
-            })
+
+            update: item => new Promise((resolve) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).put(item);
+                tx.oncomplete = () => resolve();
+            }),
+
+            delete: id => new Promise((resolve) => {
+                const tx = state.db.transaction([STORE], 'readwrite');
+                tx.objectStore(STORE).delete(id);
+                tx.oncomplete = () => resolve();
+            }),
+
+            get: id => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const req = tx.objectStore(STORE).get(id);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            }),
+
+            getChildren: parentId => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const index = tx.objectStore(STORE).index('parentId');
+                const req = index.getAll(parentId);
+                req.onsuccess = () => resolve(req.result);
+            }),
+
+            getAll: () => new Promise(resolve => {
+                const tx = state.db.transaction([STORE], 'readonly');
+                const req = tx.objectStore(STORE).getAll();
+                req.onsuccess = () => resolve(req.result);
+            }),
+
+            // Build path from current node back to root
+            buildPath: async (folderId) => {
+                const path = [];
+                let currId = folderId;
+                
+                // Safety break after 20 levels
+                let safety = 0; 
+                while(currId !== 'root' && safety < 20) {
+                    const folder = await db.get(currId);
+                    if(!folder) break;
+                    path.unshift(folder);
+                    currId = folder.parentId;
+                    safety++;
+                }
+                path.unshift({ id: 'root', name: 'My Drive', isFolder: true });
+                return path;
+            }
         };
 
-        // HELPER UTILS
-        const utils = {
-            fmtBytes: b => {
-                if(!b) return '0 B';
-                const s = ['B','KB','MB','GB'];
-                const i = Math.floor(Math.log(b)/Math.log(1024));
-                return `${(b/Math.pow(1024,i)).toFixed(1)} ${s[i]}`;
-            },
-            getIcon: f => {
-                if(f.isFolder) return 'fa-solid fa-folder text-yellow-400';
-                if(f.type.startsWith('image')) return 'fa-solid fa-image text-purple-500';
-                if(f.type.startsWith('video')) return 'fa-solid fa-film text-red-500';
-                if(f.type.includes('pdf')) return 'fa-solid fa-file-pdf text-red-600';
-                if(f.name.match(/\.(txt|md|js|html|css|json)$/)) return 'fa-solid fa-file-code text-slate-500';
-                return 'fa-solid fa-file text-slate-400';
-            },
-            isText: f => f.type.startsWith('text') || f.name.match(/\.(txt|md|js|html|css|json|py|log)$/)
-        };
-
-        // ROUTER
+        // --- ROUTER ---
         const router = {
-            init: () => { window.addEventListener('hashchange', router.handle); router.handle(); },
+            init: () => {
+                window.addEventListener('hashchange', router.handle);
+                router.handle(); // Initial load
+            },
+
             handle: async () => {
-                const hash = window.location.hash || '#/folder/root';
+                const hash = window.location.hash;
                 
-                // Highlight Nav
-                document.querySelectorAll('aside nav a').forEach(a => {
-                    a.classList.remove('bg-primary-50', 'dark:bg-primary-900/20', 'text-primary-600', 'dark:text-primary-400');
-                    if(a.getAttribute('href') === hash) a.classList.add('bg-primary-50', 'dark:bg-primary-900/20', 'text-primary-600', 'dark:text-primary-400');
-                });
-
-                if(hash === '#/starred') {
-                    await app.loadStarred();
-                } else if (hash.startsWith('#/folder/')) {
-                    const id = hash.replace('#/folder/', '');
-                    await app.loadFolder(id);
-                }
-                
-                document.getElementById('previewModal').classList.add('hidden');
-            },
-            navigate: id => window.location.hash = `#/folder/${id}`,
-            closePreview: () => document.getElementById('previewModal').classList.add('hidden')
-        };
-
-        // APP CORE
-        const app = {
-            loadFolder: async (id) => {
-                state.isStarredView = false;
-                state.currentFolderId = id;
-                state.selection.clear();
-                
-                if(id === 'root') {
-                    state.currentFolderData = { id: 'root', name: 'My Drive' };
-                    state.pathCache = [{id:'root', name:'My Drive'}];
-                } else {
-                    const f = await db.get(id);
-                    if(!f) return router.navigate('root');
-                    state.currentFolderData = f;
-                    // Build path
-                    let p = [], curr = id;
-                    while(curr !== 'root' && p.length < 10) {
-                        const x = await db.get(curr);
-                        if(!x) break;
-                        p.unshift(x);
-                        curr = x.parentId;
-                    }
-                    p.unshift({id:'root', name:'My Drive'});
-                    state.pathCache = p;
-                }
-                
-                state.files = await db.getByParent(id);
-                app.render();
-            },
-
-            loadStarred: async () => {
-                state.isStarredView = true;
-                state.currentFolderId = null;
-                state.currentFolderData = { name: 'Starred' };
-                state.pathCache = [{id:'root', name:'My Drive'}, {id:'starred', name:'Starred'}];
-                state.selection.clear();
-                
-                const all = await db.getAll();
-                state.files = all.filter(f => f.starred);
-                app.render();
-            },
-
-            render: () => {
-                // Breadcrumbs
-                const bc = document.getElementById('breadcrumbs');
-                bc.innerHTML = state.pathCache.map((f, i) => {
-                    const last = i === state.pathCache.length - 1;
-                    return `
-                    ${i>0 ? '<i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-300"></i>' : ''}
-                    <button onclick="${f.id==='starred'?'window.location.hash=\'#/starred\'':'router.navigate(\''+f.id+'\')'}" 
-                            class="${last ? 'font-bold text-slate-800 dark:text-white pointer-events-none' : 'text-slate-500 hover:text-primary-500'} transition-colors">
-                        ${f.name}
-                    </button>`;
-                }).join('');
-                
-                // Files
-                const area = document.getElementById('fileArea');
-                const q = document.getElementById('searchInput').value.toLowerCase();
-                let list = state.files.filter(f => f.name.toLowerCase().includes(q));
-                
-                // Sort
-                const mul = state.sortDesc ? -1 : 1;
-                list.sort((a,b) => {
-                    if(a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
-                    if(state.sortBy === 'size') return (a.size - b.size) * mul;
-                    return a.name.localeCompare(b.name) * mul;
-                });
-
-                if(!list.length) {
-                    area.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 dark:text-slate-600 animate-fade-in"><i class="fa-solid fa-folder-open text-6xl mb-4 opacity-50"></i><p>${state.isStarredView?'No starred files':'Empty folder'}</p></div>`;
-                    app.calcStorage(); // Update stats even if empty
+                if (!hash || hash === '#/') {
+                    window.location.hash = '#/folder/root';
                     return;
                 }
 
-                if(state.viewMode === 'grid') {
-                    area.innerHTML = `<div class="folder-grid pb-20 animate-fade-in">
-                        ${list.map(f => `
-                            <div class="group relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 hover:shadow-md rounded-2xl p-4 flex flex-col items-center justify-between aspect-square cursor-pointer transition-all select-none ${state.selection.has(f.id)?'selected-item ring-1 ring-primary-500':''}"
-                                 onclick="actions.select(event, '${f.id}')"
-                                 oncontextmenu="ctx.open(event, '${f.id}')"
-                                 ondblclick="actions.open('${f.id}')">
-                                ${f.starred ? '<div class="absolute top-2 right-2 text-yellow-400 text-xs"><i class="fa-solid fa-star"></i></div>' : ''}
-                                <div class="w-full flex-1 flex items-center justify-center overflow-hidden mb-2 pointer-events-none">
-                                    ${f.type.startsWith('image') ? 
-                                        `<img src="${URL.createObjectURL(f.data)}" class="w-full h-full object-cover rounded-lg shadow-sm">` : 
-                                        `<i class="${utils.getIcon(f)} text-5xl opacity-90"></i>`}
+                // Parse Hash
+                if (hash.startsWith('#/folder/')) {
+                    const id = hash.replace('#/folder/', '');
+                    await app.loadFolder(id);
+                    document.getElementById('previewModal').classList.add('hidden');
+                } else if (hash.startsWith('#/file/')) {
+                    const id = hash.replace('#/file/', '');
+                    // We need to know where the file "lives" to set the background
+                    // So we fetch the file first
+                    const file = await db.get(id);
+                    if (file) {
+                        // If we aren't already in the parent folder, load it behind the scenes?
+                        // Actually, let's just load the preview.
+                        // But to show breadcrumbs correctly, we need the parent.
+                        if (state.currentFolderId !== file.parentId) {
+                            await app.loadFolder(file.parentId); 
+                        }
+                        app.openPreview(file);
+                    } else {
+                        ui.toast('File not found', 'error');
+                        window.location.hash = `#/folder/${state.currentFolderId}`;
+                    }
+                }
+            },
+
+            navigate: (folderId) => {
+                window.location.hash = `#/folder/${folderId}`;
+            },
+
+            openFile: (fileId) => {
+                window.location.hash = `#/file/${fileId}`;
+            },
+
+            closePreview: () => {
+                // Go back to the folder URL
+                window.location.hash = `#/folder/${state.currentFolderId}`;
+            }
+        };
+
+        // --- APP LOGIC ---
+        const app = {
+            loadFolder: async (id) => {
+                state.currentFolderId = id;
+                ui.setLoading(true);
+
+                // 1. Get Folder Info & Breadcrumbs
+                if (id === 'root') {
+                    state.currentFolderData = { id: 'root', name: 'My Drive' };
+                    state.pathCache = [{ id: 'root', name: 'My Drive' }];
+                } else {
+                    const folder = await db.get(id);
+                    if (!folder) {
+                        ui.toast('Folder not found', 'error');
+                        router.navigate('root');
+                        return;
+                    }
+                    state.currentFolderData = folder;
+                    // Rebuild breadcrumbs
+                    state.pathCache = await db.buildPath(id);
+                }
+
+                // Update Title
+                document.title = `${state.currentFolderData.name} - LocalDrive`;
+
+                // 2. Fetch Content
+                const items = await db.getChildren(id);
+                state.files = items;
+
+                // 3. Update Storage Stats (async)
+                app.calcStorage();
+
+                ui.renderBreadcrumbs();
+                app.applySortAndRender();
+                ui.setLoading(false);
+            },
+
+            applySortAndRender: () => {
+                const sortKey = document.getElementById('sortSelect').value;
+                
+                state.files.sort((a, b) => {
+                    // Folders always first
+                    if (a.isFolder && !b.isFolder) return -1;
+                    if (!a.isFolder && b.isFolder) return 1;
+
+                    // Sort logic
+                    if (sortKey === 'size') return b.size - a.size; // Desc
+                    if (sortKey === 'date') return b.createdAt - a.createdAt; // Desc
+                    return a.name.localeCompare(b.name); // Asc
+                });
+
+                // Search Filter
+                const q = document.getElementById('searchInput').value.toLowerCase();
+                const filtered = state.files.filter(f => f.name.toLowerCase().includes(q));
+                
+                ui.renderFiles(filtered);
+            },
+
+            handleSort: (val) => {
+                state.sortBy = val;
+                app.applySortAndRender();
+            },
+
+            toggleView: (mode) => {
+                state.viewMode = mode;
+                
+                const btnGrid = document.getElementById('btnGrid');
+                const btnList = document.getElementById('btnList');
+                
+                if(mode === 'grid') {
+                    btnGrid.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnGrid.classList.remove('text-slate-500');
+                    btnList.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnList.classList.add('text-slate-500');
+                } else {
+                    btnList.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnList.classList.remove('text-slate-500');
+                    btnGrid.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
+                    btnGrid.classList.add('text-slate-500');
+                }
+
+                app.applySortAndRender();
+            },
+
+            uploadFiles: async (fileList) => {
+                if (!fileList.length) return;
+                
+                let count = 0;
+                ui.toast(`Uploading ${fileList.length} files...`, 'info');
+
+                for (let file of fileList) {
+                    const newItem = {
+                        id: crypto.randomUUID(),
+                        parentId: state.currentFolderId,
+                        name: file.name,
+                        isFolder: false,
+                        type: file.type,
+                        size: file.size,
+                        createdAt: Date.now(),
+                        data: file
+                    };
+                    try {
+                        await db.add(newItem);
+                        count++;
+                    } catch(e) {
+                        console.error(e);
+                        ui.toast(`Failed to save ${file.name} (Quota?)`, 'error');
+                    }
+                }
+                
+                ui.toast(`Uploaded ${count} files`, 'success');
+                app.loadFolder(state.currentFolderId);
+            },
+
+            createFolder: async (name) => {
+                if (!name.trim()) return;
+                const folder = {
+                    id: crypto.randomUUID(),
+                    parentId: state.currentFolderId,
+                    name: name,
+                    isFolder: true,
+                    size: 0,
+                    createdAt: Date.now()
+                };
+                await db.add(folder);
+                ui.toast('Folder created', 'success');
+                app.loadFolder(state.currentFolderId);
+            },
+
+            deleteRecursive: async (id) => {
+                const item = await db.get(id);
+                if (!item) return;
+
+                if (item.isFolder) {
+                    const children = await db.getChildren(id);
+                    for (let c of children) await app.deleteRecursive(c.id);
+                }
+                await db.delete(id);
+            },
+
+            calcStorage: async () => {
+                // Rough estimate
+                const all = await db.getAll();
+                const used = all.reduce((acc, i) => acc + (i.size || 0), 0);
+                // Assume 500MB for visual purposes (Browsers vary wildly)
+                const total = 500 * 1024 * 1024; 
+                
+                const percent = Math.min((used / total) * 100, 100).toFixed(1);
+                
+                document.getElementById('storagePercent').innerText = `${percent}%`;
+                document.getElementById('storageText').innerText = utils.formatBytes(used);
+                document.getElementById('storageBar').style.width = `${percent}%`;
+                
+                if (percent > 80) document.getElementById('storageBar').classList.replace('bg-primary-500', 'bg-red-500');
+            },
+
+            openPreview: (file) => {
+                const modal = document.getElementById('previewModal');
+                const content = document.getElementById('previewContent');
+                
+                document.getElementById('previewTitle').innerText = file.name;
+                document.getElementById('previewMeta').innerText = `${utils.formatBytes(file.size)} • ${new Date(file.createdAt).toLocaleString()}`;
+                document.title = `${file.name} - Preview`;
+
+                // Icon
+                document.getElementById('previewIcon').innerHTML = `<i class="${utils.getIcon(file, false)} text-xl text-slate-400"></i>`;
+
+                // Download
+                const url = URL.createObjectURL(file.data);
+                const dlBtn = document.getElementById('downloadBtn');
+                dlBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = file.name;
+                    a.click();
+                };
+
+                // Content
+                content.innerHTML = '<div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>';
+                
+                modal.classList.remove('hidden');
+
+                setTimeout(() => {
+                    if (file.type.startsWith('image/')) {
+                        content.innerHTML = `<img src="${url}" class="max-w-full max-h-[85vh] rounded shadow-2xl object-contain">`;
+                    } else if (file.type.startsWith('video/')) {
+                        content.innerHTML = `<video src="${url}" controls class="max-w-full max-h-[85vh] rounded shadow-2xl"></video>`;
+                    } else if (file.type.startsWith('audio/')) {
+                        content.innerHTML = `
+                            <div class="bg-slate-800 p-12 rounded-3xl flex flex-col items-center gap-8 shadow-2xl border border-slate-700">
+                                <div class="w-24 h-24 bg-gradient-to-tr from-pink-500 to-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                                    <i class="fa-solid fa-music text-4xl text-white"></i>
                                 </div>
-                                <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate w-full text-center">${f.name}</p>
+                                <audio src="${url}" controls class="w-64"></audio>
+                            </div>`;
+                    } else if (file.name.match(/\.(txt|md|js|json|css|html|xml|log)$/i) || file.type.startsWith('text/')) {
+                        const r = new FileReader();
+                        r.onload = e => {
+                            content.innerHTML = `<div class="bg-white text-slate-800 p-8 rounded-lg shadow-2xl max-w-4xl w-full h-[80vh] overflow-auto font-mono text-sm leading-relaxed whitespace-pre-wrap">${e.target.result.replace(/</g, "&lt;")}</div>`;
+                        };
+                        r.readAsText(file.data);
+                    } else {
+                        content.innerHTML = `
+                            <div class="text-center text-white/50">
+                                <i class="fa-solid fa-file-circle-question text-6xl mb-4"></i>
+                                <p class="text-xl">Preview not available</p>
+                                <button onclick="document.getElementById('downloadBtn').click()" class="mt-4 text-primary-300 hover:text-white underline">Download File</button>
+                            </div>`;
+                    }
+                }, 100);
+            }
+        };
+
+        // --- UI & HELPERS ---
+        const ui = {
+            renderFiles: (items) => {
+                const area = document.getElementById('fileArea');
+                
+                if (items.length === 0) {
+                    area.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-slate-300 pb-20">
+                            <div class="bg-slate-100 p-6 rounded-full mb-4">
+                                <i class="fa-solid fa-folder-open text-4xl text-slate-300"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-slate-600">Empty Folder</h3>
+                            <p class="text-sm">Drag files here or create a new folder.</p>
+                        </div>`;
+                    return;
+                }
+
+                if (state.viewMode === 'grid') {
+                    area.innerHTML = `<div class="folder-grid pb-20">
+                        ${items.map(item => `
+                            <div oncontextmenu="utils.handleContext(event, '${item.id}')" 
+                                 onclick="utils.handleItemClick('${item.id}', ${item.isFolder})"
+                                 class="group relative bg-white border border-slate-200 hover:border-primary-400 hover:shadow-lg hover:shadow-primary-100 rounded-2xl p-4 flex flex-col items-center text-center cursor-pointer transition-all aspect-square justify-between select-none">
+                                
+                                <div class="w-full flex-1 flex items-center justify-center overflow-hidden mb-2">
+                                    ${utils.getThumbnail(item)}
+                                </div>
+                                
+                                <div class="w-full px-1">
+                                    <p class="text-xs font-semibold text-slate-700 truncate w-full" title="${item.name}">${item.name}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">${item.isFolder ? 'Folder' : utils.formatBytes(item.size)}</p>
+                                </div>
                             </div>
                         `).join('')}
                     </div>`;
                 } else {
                     area.innerHTML = `
-                        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm mb-20 animate-fade-in">
-                            <table class="w-full text-left text-sm dark:text-slate-300">
-                                <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 text-xs uppercase text-slate-500">
+                        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-20">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 border-b border-slate-100 text-xs uppercase tracking-wider">
                                     <tr>
-                                        <th class="px-6 py-3 cursor-pointer" onclick="actions.sort('name')">Name</th>
-                                        <th class="px-6 py-3 hidden sm:table-cell">Date</th>
-                                        <th class="px-6 py-3 hidden md:table-cell">Size</th>
-                                        <th class="px-6 py-3 w-10"></th>
+                                        <th class="px-6 py-3 font-medium">Name</th>
+                                        <th class="px-6 py-3 font-medium hidden sm:table-cell">Date</th>
+                                        <th class="px-6 py-3 font-medium hidden md:table-cell">Size</th>
+                                        <th class="px-6 py-3 text-right"></th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                                    ${list.map(f => `
-                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${state.selection.has(f.id)?'bg-primary-50 dark:bg-slate-700':''}"
-                                            onclick="actions.select(event, '${f.id}')"
-                                            oncontextmenu="ctx.open(event, '${f.id}')"
-                                            ondblclick="actions.open('${f.id}')">
+                                <tbody class="divide-y divide-slate-100">
+                                    ${items.map(item => `
+                                        <tr oncontextmenu="utils.handleContext(event, '${item.id}')"
+                                            onclick="utils.handleItemClick('${item.id}', ${item.isFolder})" 
+                                            class="hover:bg-primary-50 cursor-pointer transition-colors group">
                                             <td class="px-6 py-3 flex items-center gap-3">
-                                                <i class="${utils.getIcon(f)} w-5 text-center text-lg"></i>
-                                                <span class="truncate max-w-[200px] font-medium ${f.starred?'text-yellow-600 dark:text-yellow-400':''}">${f.name}</span>
+                                                <div class="w-8 flex justify-center"><i class="${utils.getIcon(item, true)} text-lg"></i></div>
+                                                <span class="font-medium text-slate-700 truncate max-w-[150px] sm:max-w-xs">${item.name}</span>
                                             </td>
-                                            <td class="px-6 py-3 text-slate-500 text-xs hidden sm:table-cell">${new Date(f.createdAt).toLocaleDateString()}</td>
-                                            <td class="px-6 py-3 text-slate-500 text-xs font-mono hidden md:table-cell">${f.isFolder?'--':utils.fmtBytes(f.size)}</td>
+                                            <td class="px-6 py-3 text-slate-500 hidden sm:table-cell text-xs">${new Date(item.createdAt).toLocaleDateString()}</td>
+                                            <td class="px-6 py-3 text-slate-500 hidden md:table-cell text-xs font-mono">${item.isFolder ? '--' : utils.formatBytes(item.size)}</td>
                                             <td class="px-6 py-3 text-right">
-                                                ${f.starred ? '<i class="fa-solid fa-star text-yellow-400 text-xs"></i>' : ''}
+                                                <button onclick="event.stopPropagation(); utils.handleContext(event, '${item.id}')" class="text-slate-300 hover:text-slate-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -461,282 +640,211 @@
                             </table>
                         </div>`;
                 }
-                app.calcStorage();
             },
 
-            calcStorage: async () => {
-                const all = await db.getAll();
-                const total = all.reduce((a,b) => a + (b.size||0), 0);
-                const limit = 1024 * 1024 * 1024; // 1GB Visual Limit
-                const pct = Math.min((total/limit)*100, 100).toFixed(1);
+            renderBreadcrumbs: () => {
+                const el = document.getElementById('breadcrumbs');
+                let html = '';
                 
-                document.getElementById('storageBar').style.width = `${pct}%`;
-                document.getElementById('storagePercent').innerText = `${pct}%`;
-                document.getElementById('storageUsed').innerText = utils.fmtBytes(total);
+                state.pathCache.forEach((folder, index) => {
+                    const isLast = index === state.pathCache.length - 1;
+                    if (index > 0) html += `<i class="fa-solid fa-chevron-right text-[10px] mx-2 text-slate-300"></i>`;
+                    
+                    html += `
+                        <button onclick="router.navigate('${folder.id}')" 
+                                class="${isLast ? 'font-bold text-slate-800 pointer-events-none' : 'text-slate-500 hover:text-primary-600 hover:bg-slate-100 px-2 py-0.5 rounded transition-colors'}">
+                            ${folder.name}
+                        </button>
+                    `;
+                });
+                el.innerHTML = html;
+                // Scroll to end
+                el.scrollLeft = el.scrollWidth;
             },
-            
-            toggleView: m => {
-                state.viewMode = m;
-                localStorage.setItem('viewMode', m);
-                app.render();
+
+            setLoading: (bool) => {
+                const area = document.getElementById('fileArea');
+                if (bool) {
+                    area.innerHTML = '<div class="absolute inset-0 flex items-center justify-center bg-white/50 z-10"><div class="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div></div>';
+                }
+            },
+
+            toast: (msg, type = 'info') => {
+                const c = document.getElementById('toastContainer');
+                const div = document.createElement('div');
+                const colors = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-slate-800';
+                
+                div.className = `${colors} text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium toast backdrop-blur-md bg-opacity-90`;
+                div.innerHTML = `
+                    <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+                    ${msg}
+                `;
+                c.appendChild(div);
+                setTimeout(() => {
+                    div.style.opacity = '0';
+                    div.style.transform = 'translateY(10px)';
+                    setTimeout(() => div.remove(), 300);
+                }, 3000);
             }
         };
 
-        // USER ACTIONS
-        const actions = {
-            select: (e, id) => {
-                if(e.ctrlKey || e.metaKey) {
-                    state.selection.has(id) ? state.selection.delete(id) : state.selection.add(id);
-                } else if (!state.selection.has(id)) {
-                    state.selection.clear();
-                    state.selection.add(id);
+        const utils = {
+            formatBytes: (bytes) => {
+                if (!+bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+            },
+
+            getIcon: (item, color) => {
+                if (item.isFolder) return color ? "fa-solid fa-folder text-blue-500" : "fa-solid fa-folder";
+                const t = item.type;
+                if (t.startsWith('image')) return color ? "fa-solid fa-image text-purple-500" : "fa-solid fa-image";
+                if (t.startsWith('video')) return color ? "fa-solid fa-film text-red-500" : "fa-solid fa-film";
+                if (t.startsWith('audio')) return color ? "fa-solid fa-music text-pink-500" : "fa-solid fa-music";
+                if (t.includes('pdf')) return color ? "fa-solid fa-file-pdf text-red-500" : "fa-solid fa-file-pdf";
+                if (t.includes('text') || item.name.includes('.md') || item.name.includes('.js')) return color ? "fa-solid fa-file-lines text-slate-500" : "fa-solid fa-file-lines";
+                return color ? "fa-solid fa-file text-slate-400" : "fa-solid fa-file";
+            },
+
+            getThumbnail: (item) => {
+                if (item.isFolder) return `<i class="fa-solid fa-folder text-5xl text-blue-500 drop-shadow-sm"></i>`;
+                if (item.type.startsWith('image')) {
+                    const url = URL.createObjectURL(item.data);
+                    // Revoke URL after load to save memory? In a grid this causes flickering if refreshed.
+                    // Kept simple for now.
+                    return `<img src="${url}" class="w-full h-full object-cover rounded-lg shadow-sm" loading="lazy">`;
                 }
-                app.render();
-            },
-            
-            selectAll: () => {
-                state.files.forEach(f => state.selection.add(f.id));
-                app.render();
+                return `<i class="${utils.getIcon(item, true)} text-5xl opacity-80"></i>`;
             },
 
-            open: async (id) => {
-                const f = await db.get(id);
-                if(f.isFolder) router.navigate(id);
-                else {
-                    // Preview
-                    const m = document.getElementById('previewModal');
-                    const c = document.getElementById('previewContent');
-                    
-                    document.getElementById('previewTitle').innerText = f.name;
-                    document.getElementById('previewMeta').innerText = utils.fmtBytes(f.size);
-                    document.getElementById('previewIcon').innerHTML = `<i class="${utils.getIcon(f)} text-lg text-slate-400"></i>`;
-                    
-                    const url = URL.createObjectURL(f.data);
-                    document.getElementById('downloadBtn').onclick = () => {
-                        const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
-                    };
-
-                    document.getElementById('saveTextBtn').classList.add('hidden');
-                    m.classList.remove('hidden');
-
-                    if(f.type.startsWith('image')) c.innerHTML = `<img src="${url}" class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain">`;
-                    else if(f.type.startsWith('video')) c.innerHTML = `<video src="${url}" controls class="max-w-full max-h-[85vh] rounded-lg shadow-2xl"></video>`;
-                    else if(utils.isText(f)) {
-                        const r = new FileReader();
-                        r.onload = e => {
-                            c.innerHTML = `<textarea id="editor" class="w-full h-[80vh] max-w-4xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-6 rounded-lg shadow-xl font-mono text-sm leading-relaxed resize-none focus:outline-none ring-1 ring-slate-200 dark:ring-slate-700">${e.target.result}</textarea>`;
-                            document.getElementById('saveTextBtn').onclick = async () => {
-                                f.data = new Blob([document.getElementById('editor').value], {type: f.type});
-                                f.size = f.data.size;
-                                await db.put(f);
-                                ui.toast('Saved', 'success');
-                                app.render();
-                            };
-                            document.getElementById('saveTextBtn').classList.remove('hidden');
-                        };
-                        r.readAsText(f.data);
-                    } else c.innerHTML = `<div class="text-center text-white/50"><i class="fa-solid fa-file-circle-question text-6xl mb-4"></i><p>No Preview</p></div>`;
-                }
+            handleItemClick: (id, isFolder) => {
+                if (isFolder) router.navigate(id);
+                else router.openFile(id);
             },
 
-            upload: async (list) => {
-                if(!list.length) return;
-                ui.toast(`Uploading ${list.length} items...`);
-                for(let file of list) {
-                    await db.add({
-                        id: crypto.randomUUID(),
-                        parentId: state.currentFolderId || 'root',
-                        name: file.name,
-                        isFolder: false,
-                        type: file.type,
-                        size: file.size,
-                        createdAt: Date.now(),
-                        starred: false,
-                        data: file
-                    });
-                }
-                app.render();
-                ui.toast('Upload complete', 'success');
-            },
-
-            deleteSelected: async () => {
-                if(!state.selection.size) return;
-                if(!confirm(`Delete ${state.selection.size} items?`)) return;
-                
-                const recursiveDel = async (id) => {
-                    const f = await db.get(id);
-                    if(f.isFolder) {
-                        const kids = await db.getByParent(id);
-                        for(let k of kids) await recursiveDel(k.id);
-                    }
-                    await db.del(id);
-                };
-
-                for(let id of state.selection) await recursiveDel(id);
-                state.selection.clear();
-                app.render();
-                ui.toast('Deleted', 'success');
-            },
-            
-            toggleStar: async () => {
-                for(let id of state.selection) {
-                    const f = await db.get(id);
-                    f.starred = !f.starred;
-                    await db.put(f);
-                }
-                app.render();
-                ctx.close();
-            },
-
-            showProps: async () => {
-                const id = Array.from(state.selection)[0];
-                const f = await db.get(id);
-                const c = document.getElementById('propsContent');
-                c.innerHTML = `
-                    <div class="grid grid-cols-3 gap-2">
-                        <span class="font-semibold">Type:</span> <span class="col-span-2">${f.isFolder?'Folder':f.type||'Unknown'}</span>
-                        <span class="font-semibold">Size:</span> <span class="col-span-2">${utils.fmtBytes(f.size)}</span>
-                        <span class="font-semibold">Location:</span> <span class="col-span-2 text-xs truncate">${f.parentId}</span>
-                        <span class="font-semibold">Date:</span> <span class="col-span-2 text-xs">${new Date(f.createdAt).toLocaleString()}</span>
-                    </div>`;
-                modals.open('propsModal');
-                ctx.close();
-            }
-        };
-
-        // CONTEXT MENU LOGIC
-        const ctx = {
-            el: document.getElementById('contextMenu'),
-            open: (e, id) => {
+            handleContext: (e, id) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if(!state.selection.has(id)) {
-                    state.selection.clear();
-                    state.selection.add(id);
-                    app.render();
-                }
                 
-                // Build Menu
-                const count = state.selection.size;
-                const single = count === 1;
-                let html = '';
+                state.contextItem = state.files.find(f => f.id === id);
+                if (!state.contextItem) return;
 
-                if(single) {
-                    html += `<button onclick="actions.open('${id}'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-expand w-4"></i> Open</button>`;
-                    html += `<button onclick="modals.open('renameModal'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-pen w-4"></i> Rename</button>`;
-                    html += `<button onclick="actions.toggleStar()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-star w-4"></i> Star/Unstar</button>`;
-                    html += `<button onclick="actions.showProps()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-circle-info w-4"></i> Properties</button>`;
-                } else {
-                    html += `<div class="px-4 py-2 text-xs text-slate-400 font-bold uppercase">${count} Items Selected</div>`;
-                    html += `<button onclick="actions.toggleStar()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-star w-4"></i> Star/Unstar All</button>`;
-                }
+                const menu = document.getElementById('contextMenu');
+                document.getElementById('ctxTitle').innerText = state.contextItem.name;
                 
-                html += `<div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>`;
-                html += `<button onclick="actions.deleteSelected(); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 flex items-center gap-3"><i class="fa-solid fa-trash w-4"></i> Delete</button>`;
+                // Position logic to keep inside viewport
+                let x = e.clientX;
+                let y = e.clientY;
+                if (x + 200 > window.innerWidth) x = window.innerWidth - 200;
+                if (y + 200 > window.innerHeight) y = window.innerHeight - 200;
 
-                ctx.el.innerHTML = html;
-                ctx.pos(e.clientX, e.clientY);
-            },
-            
-            bg: (e) => {
-                e.preventDefault();
-                state.selection.clear();
-                app.render();
-                
-                let html = `<button onclick="modals.open('folderModal'); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-folder-plus w-4"></i> New Folder</button>`;
-                html += `<button onclick="document.getElementById('fileInput').click(); ctx.close()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-upload w-4"></i> Upload Files</button>`;
-                html += `<div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>`;
-                html += `<button onclick="location.reload()" class="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3"><i class="fa-solid fa-rotate-right w-4"></i> Refresh</button>`;
-                
-                ctx.el.innerHTML = html;
-                ctx.pos(e.clientX, e.clientY);
-            },
+                menu.style.left = `${x}px`;
+                menu.style.top = `${y}px`;
+                menu.classList.remove('hidden');
 
-            pos: (x, y) => {
-                ctx.el.classList.remove('hidden');
-                // Boundary checks
-                if(x + 200 > window.innerWidth) x -= 200;
-                if(y + ctx.el.offsetHeight > window.innerHeight) y -= ctx.el.offsetHeight;
-                ctx.el.style.left = `${x}px`;
-                ctx.el.style.top = `${y}px`;
-            },
-            close: () => ctx.el.classList.add('hidden')
+                // Close on click elsewhere
+                const close = () => {
+                    menu.classList.add('hidden');
+                    document.removeEventListener('click', close);
+                };
+                document.addEventListener('click', close);
+            }
         };
 
         const modals = {
-            open: id => {
-                const m = document.getElementById(id);
+            openFolder: () => {
+                const m = document.getElementById('folderModal');
                 m.classList.remove('hidden');
-                m.querySelector('input')?.focus();
-                // Prep rename if needed
-                if(id==='renameModal') {
-                    const fid = Array.from(state.selection)[0];
-                    db.get(fid).then(f => document.getElementById('renameInput').value = f.name);
-                }
+                setTimeout(() => m.classList.remove('opacity-0'), 10);
+                document.getElementById('folderNameInput').focus();
             },
-            close: id => document.getElementById(id).classList.add('hidden'),
+            closeFolder: () => {
+                const m = document.getElementById('folderModal');
+                m.classList.add('opacity-0');
+                setTimeout(() => m.classList.add('hidden'), 200);
+            },
             submitFolder: async () => {
-                const n = document.getElementById('folderNameInput').value.trim();
-                if(n) {
-                    await db.add({id:crypto.randomUUID(), parentId:state.currentFolderId, name:n, isFolder:true, size:0, createdAt:Date.now()});
-                    modals.close('folderModal');
-                    app.render();
-                }
+                const input = document.getElementById('folderNameInput');
+                await app.createFolder(input.value);
+                input.value = '';
+                modals.closeFolder();
             },
             submitRename: async () => {
-                const n = document.getElementById('renameInput').value.trim();
-                const fid = Array.from(state.selection)[0];
-                if(n && fid) {
-                    const f = await db.get(fid);
-                    f.name = n;
-                    await db.put(f);
-                    modals.close('renameModal');
-                    app.render();
+                const input = document.getElementById('renameInput');
+                const newName = input.value.trim();
+                if (newName && state.contextItem) {
+                    state.contextItem.name = newName;
+                    await db.update(state.contextItem);
+                    document.getElementById('renameModal').classList.add('hidden');
+                    app.loadFolder(state.currentFolderId);
+                    ui.toast('Renamed successfully', 'success');
                 }
             }
         };
 
-        const ui = {
-            toggleTheme: () => {
-                document.documentElement.classList.toggle('dark');
-                state.darkMode = !state.darkMode;
-                localStorage.setItem('theme', state.darkMode?'dark':'light');
+        const actions = {
+            open: () => {
+                if (state.contextItem.isFolder) router.navigate(state.contextItem.id);
+                else router.openFile(state.contextItem.id);
             },
-            toggleSidebar: () => {
-                document.getElementById('sidebar').classList.toggle('-translate-x-full');
-                document.getElementById('sidebarOverlay').classList.toggle('hidden');
+            rename: () => {
+                document.getElementById('renameModal').classList.remove('hidden');
+                document.getElementById('renameInput').value = state.contextItem.name;
+                document.getElementById('renameInput').focus();
             },
-            toast: (msg, type='info') => {
-                const c = document.getElementById('toastContainer');
-                const d = document.createElement('div');
-                d.className = `${type==='success'?'bg-emerald-500':'bg-slate-800 dark:bg-slate-700'} text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 text-sm font-medium animate-fade-in`;
-                d.innerHTML = `<i class="fa-solid ${type==='success'?'fa-check-circle':'fa-info-circle'}"></i> ${msg}`;
-                c.appendChild(d);
-                setTimeout(()=>d.remove(), 3000);
+            delete: async () => {
+                if (confirm(`Delete "${state.contextItem.name}"? This cannot be undone.`)) {
+                    await app.deleteRecursive(state.contextItem.id);
+                    app.loadFolder(state.currentFolderId);
+                    ui.toast('Item deleted', 'success');
+                }
+            },
+            download: () => {
+                if (state.contextItem.isFolder) {
+                    ui.toast('Cannot download folders yet', 'error');
+                    return;
+                }
+                const url = URL.createObjectURL(state.contextItem.data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = state.contextItem.name;
+                a.click();
             }
         };
 
-        // EVENT LISTENERS
-        window.addEventListener('keydown', e => {
-            if(e.key === 'Delete') actions.deleteSelected();
-            if(e.key === 'Escape') { state.selection.clear(); app.render(); ctx.close(); }
-            if(e.key === 'a' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); actions.selectAll(); }
+        // --- GLOBAL EVENTS ---
+        
+        // Search
+        document.getElementById('searchInput').addEventListener('input', app.applySortAndRender);
+        
+        // Drag & Drop
+        const dz = document.getElementById('dropZone');
+        let dragCounter = 0;
+        window.addEventListener('dragenter', e => { e.preventDefault(); dragCounter++; dz.classList.remove('hidden'); });
+        window.addEventListener('dragleave', e => { e.preventDefault(); dragCounter--; if(dragCounter === 0) dz.classList.add('hidden'); });
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', async e => {
+            e.preventDefault();
+            dragCounter = 0;
+            dz.classList.add('hidden');
+            if (e.dataTransfer.files.length) await app.uploadFiles(e.dataTransfer.files);
         });
 
-        // INIT
-        if(state.darkMode) document.documentElement.classList.add('dark');
-        document.getElementById('searchInput').addEventListener('input', app.render);
-        document.getElementById('fileInput').addEventListener('change', e => {actions.upload(e.target.files); e.target.value=''});
-        
-        // Drag Drop
-        const dz = document.getElementById('dropZone');
-        let dragC = 0;
-        window.addEventListener('dragenter', e=>{e.preventDefault(); dragC++; dz.classList.remove('hidden')});
-        window.addEventListener('dragleave', e=>{e.preventDefault(); dragC--; if(dragC===0)dz.classList.add('hidden')});
-        window.addEventListener('dragover', e=>e.preventDefault());
-        window.addEventListener('drop', e=>{e.preventDefault(); dragC=0; dz.classList.add('hidden'); if(e.dataTransfer.files.length) actions.upload(e.dataTransfer.files)});
+        // File Input
+        document.getElementById('fileInput').addEventListener('change', e => {
+            app.uploadFiles(e.target.files);
+            e.target.value = '';
+        });
 
-        (async () => { await db.init(); router.init(); })();
+        function triggerUpload() { document.getElementById('fileInput').click(); }
+
+        // INIT
+        (async () => {
+            await db.init();
+            router.init();
+        })();
 
     </script>
 </body>
